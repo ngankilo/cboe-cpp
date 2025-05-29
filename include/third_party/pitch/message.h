@@ -1,26 +1,39 @@
 //
 // Created by phamanhtan on 29/5/25.
 //
+//
+// Created by phamanhtan on 29/5/25.
+//
 #pragma once
-
-#ifndef MESSAGE_H
-#define MESSAGE_H
-
-
+#include "message.h"
 #include <string>
+#include <cstdint>
+#include <stdexcept>
 
 namespace CboePitch {
-    // Base class for PITCH messages
-    class Message {
+
+    class OrderBase : public Message {
+    protected:
+        uint64_t timestamp;
+        uint64_t orderId;
+        std::string symbol;
+
     public:
-        virtual ~Message() = default;
+        OrderBase(uint64_t ts, uint64_t oid, const std::string& sym)
+            : timestamp(ts), orderId(oid), symbol(sym) {
+            validate();
+        }
 
-        virtual std::string toString() const = 0;
+        std::string getSymbol() const override { return symbol; }
+        void setSymbol(const std::string& sym) override {
+            if (sym.size() > 6) throw std::invalid_argument("Symbol must be <= 6 characters");
+            symbol = sym;
+        }
 
-        virtual char getMessageType() const = 0;
-
-        virtual std::string getSymbol() const { return ""; }
-        virtual void setSymbol(const std::string &) { throw std::invalid_argument("Symbol not supported"); }
+    protected:
+        void validate() {
+            if (symbol.size() > 6) throw std::invalid_argument("Symbol must be <= 6 characters");
+        }
     };
+
 } // namespace CboePitch
-#endif

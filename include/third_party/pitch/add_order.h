@@ -1,6 +1,9 @@
 //
 // Created by phamanhtan on 29/5/25.
 //
+
+#ifndef ADD_ORDER_H
+#define ADD_ORDER_H
 #pragma once
 #include "order_base.h"
 #include <string>
@@ -57,4 +60,4 @@ namespace CboePitch {
     };
 
 } // namespace CboePitch
-#endif
+#endif //ADD_ORDER_H

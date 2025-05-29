@@ -1,6 +1,9 @@
 //
 // Created by phamanhtan on 29/5/25.
 //
+
+#ifndef ORDER_EXECUTED_AT_PRICE_H
+#define ORDER_EXECUTED_AT_PRICE_H
 #pragma once
 #include "order_base.h"
 #include <string>
@@ -57,4 +60,4 @@ namespace CboePitch {
     };
 
 } // namespace CboePitch
-#endif
+#endif //ORDER_EXECUTED_AT_PRICE_H

@@ -1,6 +1,9 @@
 //
 // Created by phamanhtan on 29/5/25.
 //
+
+#ifndef UNIT_CLEAR_H
+#define UNIT_CLEAR_H
 #pragma once
 #include "message.h"
 #include <string>
@@ -36,3 +39,4 @@ namespace CboePitch {
     };
 
 } // namespace CboePitch
+#endif //UNIT_CLEAR_H

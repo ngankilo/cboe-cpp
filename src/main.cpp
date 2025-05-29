@@ -6,10 +6,14 @@
 #include <chrono>
 #include <thread>
 #include <vector>
+#include <cstdint>
 
-#include "../include/third_party/pitch/message.h"
-#include "../include/third_party/pitch/message_factory.h"
-
+#include "UdpReceiver.hpp"
+#include "Dispatcher.hpp"
+#include "JsonKafkaHandler.hpp"
+#include "KafkaProducer.hpp"
+#include "Message.hpp"
+#include "message_factory.h"
 
 std::atomic<bool> quit{false};
 
@@ -17,7 +21,7 @@ void signal_handler(int sig) {
     quit = true;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     if (argc != 4) {
         std::cerr << "Usage: " << argv[0] << " <ip> <port> <kafka_brokers>" << std::endl;
         return 1;
@@ -28,40 +32,126 @@ int main(int argc, char *argv[]) {
     std::string kafka_brokers = argv[3];
 
     try {
+        // Initialize Kafka producer
+        auto kafka_producer = std::make_shared<KafkaProducer>(kafka_brokers);
+
+        // Initialize message handler
+        auto handler = std::make_shared<JsonKafkaHandler>(kafka_producer);
+
+        // Initialize dispatcher with optimal thread count
+        size_t num_threads = std::thread::hardware_concurrency();
+        Dispatcher dispatcher(handler, num_threads);
+
+        // Initialize UDP receiver
+        UdpReceiver receiver(ip, port);
+
         signal(SIGINT, signal_handler);
 
-        std::cout << "Starting CBOE Feed Handler..." << std::endl;
+        std::cout << "Starting CBOE Australia Feed Handler..." << std::endl;
         std::cout << "UDP: " << ip << ":" << port << std::endl;
+        std::cout << "Kafka: " << kafka_brokers << std::endl;
+        std::cout << "Threads: " << num_threads << std::endl;
+
+        // Start receiving UDP packets
+        receiver.start([&dispatcher](const std::vector<char>& packet) {
+            const uint8_t* data = reinterpret_cast<const uint8_t*>(packet.data());
+            size_t size = packet.size();
+            std::cerr << "Received packet: " << std::hex;
+            for (size_t i = 0; i < size; ++i) std::cerr << (int)data[i] << " ";
+            std::cerr << std::dec << std::endl;
+            try {
+                auto pitch_message = CboePitch::parseMessage(data, size);
+                auto message = std::make_shared<Message>(
+                    "CBOE_AUSTRALIA_PITCH",
+                    static_cast<int>(pitch_message->getMessageType()),
+                    pitch_message->getSymbol(),
+                    pitch_message->toString()
+                );
+                dispatcher.dispatch(message);
+            } catch (const std::exception& e) {
+                std::cerr << "Parse error: " << e.what() << std::endl;
+            }
+        }, 2, 1500); // MTU 1500 per spec
 
         std::cout << "Server started. Press Ctrl+C to stop." << std::endl;
 
-        // Test messages for verification
-        std::vector<std::string> test_messages = {
-            "29000020A000ABDDCF0XS000300AMD   0000213700Y", // AddOrderShort
-            "29000020B000ABDDCF0XS000300AMD INC00000213700Y", // AddOrderLong
-            "29000020E000ABDDCF0X000100ABDDCF0X123", // OrderExecuted
-            "29000020P000300AMD   0000213700", // TradeShort
-            "29000020r000ABDDCF0XS000300AMD INC00000213700ABDDCF0X123", // TradeLong
-            "29000020C000ABDDCF0X", // DeleteOrder
-            "29000020M000ABDDCF0X000200", // ModifyOrder
-            "29000020H00000001U1", // SeqUnitHeader
-            "29000020D000ABDDCF0X000150" // ReduceSize
+        // Test messages from Section 7.1
+        std::vector<std::vector<uint8_t>> test_messages = {
+            // Unit Clear
+            {0x06, 0x97, 0x20, 0x20, 0x20, 0x20},
+            // Trading Status
+            {0x16, 0x3B, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x5A, 0x56, 0x5A, 0x54, 0x20, 0x20, 0x54, 0x41, 0x55, 0x53, 0x20, 0x00},
+            // Add Order
+            {0x2A, 0x37, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x05, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B, 0x42, 0xBC, 0x02, 0x00, 0x00,
+             0x5A, 0x56, 0x5A, 0x54, 0x20, 0x20, 0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00,
+             0x31, 0x32, 0x33, 0x34, 0x00},
+            // Order Executed
+            {0x2B, 0x38, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x05, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B, 0xBC, 0x02, 0x00, 0x00,
+             0x34, 0x2B, 0x46, 0xE0, 0xBB, 0x00, 0x00, 0x00,
+             0x06, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B, 0x35, 0x36, 0x37, 0x38, 0x00},
+            // Order Executed at Price
+            {0x34, 0x58, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x05, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B, 0xBC, 0x02, 0x00, 0x00,
+             0x34, 0x2B, 0x46, 0xE0, 0xBB, 0x00, 0x00, 0x00,
+             0x06, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B, 0x35, 0x36, 0x37, 0x38,
+             0x4F, 0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00},
+            // Reduce Size
+            {0x16, 0x39, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x05, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B, 0xBC, 0x02, 0x00, 0x00},
+            // Modify Order
+            {0x1F, 0x3A, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x05, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B, 0xBC, 0x02, 0x00, 0x00,
+             0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00},
+            // Delete Order
+            {0x12, 0x3C, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x05, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B},
+            // Trade
+            {0x48, 0x3D, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x5A, 0x56, 0x5A, 0x54, 0x20, 0x20, 0xBC, 0x02, 0x00, 0x00,
+             0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00,
+             0x34, 0x2B, 0x46, 0xE0, 0xBB, 0x00, 0x00, 0x00,
+             0x05, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B,
+             0x06, 0x40, 0x5B, 0x77, 0x8F, 0x56, 0x1D, 0x0B,
+             0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+             0x4E, 0x43, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+            // Trade Break
+            {0x12, 0x3E, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x34, 0x2B, 0x46, 0xE0, 0xBB, 0x00, 0x00, 0x00},
+            // Calculated Value
+            {0x21, 0xE3, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x5A, 0x56, 0x5A, 0x54, 0x20, 0x20, 0x31,
+             0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00,
+             0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16},
+            // End of Session
+            {0x06, 0x2D, 0x00, 0x00, 0x00, 0x00},
+            // Auction Update
+            {0x22, 0x59, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x5A, 0x56, 0x5A, 0x54, 0x20, 0x20, 0x4F,
+             0xBC, 0x02, 0x00, 0x00, 0xBC, 0x02, 0x00, 0x00,
+             0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00},
+            // Auction Summary
+            {0x1E, 0x5A, 0xF0, 0x77, 0xBB, 0xCE, 0x2A, 0x6A, 0x62, 0x16,
+             0x5A, 0x56, 0x5A, 0x54, 0x20, 0x20, 0x4F,
+             0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00, 0xBC, 0x02, 0x00, 0x00, 0x00}
         };
 
-        for (const auto &msg: test_messages) {
+        for (const auto& msg : test_messages) {
             try {
-                auto pitch_message = CboePitch::parseMessage(msg);
+                auto pitch_message = CboePitch::parseMessage(msg.data(), msg.size());
                 std::cout << pitch_message->toString() << std::endl;
                 std::cout << "Original Symbol: " << pitch_message->getSymbol() << std::endl;
                 try {
-                    pitch_message->setSymbol("INTC INC");
+                    pitch_message->setSymbol("ZVZT  ");
                     std::cout << "Updated Symbol: " << pitch_message->getSymbol() << std::endl;
                     std::cout << pitch_message->toString() << std::endl;
-                } catch (const std::exception &e) {
+                } catch (const std::exception& e) {
                     std::cout << "SetSymbol error: " << e.what() << std::endl;
                 }
                 std::cout << "------------------------" << std::endl;
-            } catch (const std::exception &e) {
+            } catch (const std::exception& e) {
                 std::cerr << "Test message parse error: " << e.what() << std::endl;
             }
         }
@@ -69,8 +159,16 @@ int main(int argc, char *argv[]) {
         while (!quit.load()) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
+
+        std::cout << "Stopping receiver..." << std::endl;
+        receiver.stop();
+
+        std::cout << "Flushing Kafka producer..." << std::endl;
+        kafka_producer->flush(5000);
+
         std::cout << "Shutdown complete." << std::endl;
-    } catch (const std::exception &e) {
+
+    } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
