@@ -1,78 +1,119 @@
 #include <iostream>
 #include <string>
-#include <boost/asio.hpp>
-#include <nlohmann/json.hpp>
-#include "message_parser.hpp"
-#include "message_router.hpp"
-#include "kafka_producer.hpp"
+#include <memory>
+#include <signal.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
-using boost::asio::ip::udp;
-using json = nlohmann::json;
+#include "UdpReceiver.hpp"
+#include "Dispatcher.hpp"
+#include "JsonKafkaHandler.hpp"
+#include "KafkaProducer.hpp"
+#include "Message.hpp"
 
-class UdpServer {
+std::atomic<bool> quit{false};
+
+void signal_handler(int sig) {
+    quit = true;
+}
+
+// Fast message parser for UDP packets
+class FastMessageParser {
 public:
-    UdpServer(boost::asio::io_context& io_context, unsigned short port,
-              MessageRouter& router, KafkaProducer& producer)
-        : socket_(io_context, udp::endpoint(udp::v4(), port)),
-          router_(router),
-          producer_(producer) {
-        do_receive();
+    static std::shared_ptr<Message> parse(const std::vector<char>& packet) {
+        std::string message(packet.begin(), packet.end());
+        
+        size_t pos = 0;
+        size_t prev = 0;
+        
+        // Parse header
+        pos = message.find('-', prev);
+        if (pos == std::string::npos) return nullptr;
+        std::string header = message.substr(prev, pos - prev);
+        prev = pos + 1;
+        
+        // Parse mstype
+        pos = message.find('-', prev);
+        if (pos == std::string::npos) return nullptr;
+        std::string mstype = message.substr(prev, pos - prev);
+        prev = pos + 1;
+        
+        // Parse symbol
+        pos = message.find('-', prev);
+        if (pos == std::string::npos) return nullptr;
+        std::string symbol = message.substr(prev, pos - prev);
+        prev = pos + 1;
+        
+        // Parse data
+        std::string data = message.substr(prev);
+        
+        try {
+            int msgType = std::stoi(mstype);
+            return std::make_shared<Message>(header, msgType, symbol, data);
+        } catch (const std::exception&) {
+            return nullptr;
+        }
     }
-
-private:
-    void do_receive() {
-        socket_.async_receive_from(
-            boost::asio::buffer(data_, max_length), sender_endpoint_,
-            [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-                if (!ec && bytes_recvd > 0) {
-                    std::string message(data_, bytes_recvd);
-                    try {
-                        auto parsed = MessageParser::parse(message);
-                        
-                        // Convert data to JSON
-                        json j = json::parse(parsed.data);
-                        
-                        // Route message
-                        router_.route_message(parsed.mstype, parsed.symbol, j.dump());
-                        
-                        // Produce to Kafka
-                        producer_.produce(parsed.symbol, j.dump(), std::stoi(parsed.mstype));
-                    } catch (const std::exception& e) {
-                        std::cerr << "Error processing message: " << e.what() << std::endl;
-                    }
-                }
-                do_receive();
-            });
-    }
-
-    udp::socket socket_;
-    udp::endpoint sender_endpoint_;
-    enum { max_length = 65536 };
-    char data_[max_length];
-    MessageRouter& router_;
-    KafkaProducer& producer_;
 };
 
 int main(int argc, char* argv[]) {
+    if (argc != 4) {
+        std::cerr << "Usage: " << argv[0] << " <ip> <port> <kafka_brokers>" << std::endl;
+        return 1;
+    }
+    
+    std::string ip = argv[1];
+    uint16_t port = static_cast<uint16_t>(std::stoi(argv[2]));
+    std::string kafka_brokers = argv[3];
+    
     try {
-        if (argc != 3) {
-            std::cerr << "Usage: " << argv[0] << " <port> <kafka_brokers>" << std::endl;
-            return 1;
+        // Initialize Kafka producer
+        auto kafka_producer = std::make_shared<KafkaProducer>(kafka_brokers);
+        
+        // Initialize message handler
+        auto handler = std::make_shared<JsonKafkaHandler>(kafka_producer);
+        
+        // Initialize dispatcher with optimal thread count
+        size_t num_threads = std::thread::hardware_concurrency();
+        Dispatcher dispatcher(handler, num_threads);
+        
+        // Initialize UDP receiver
+        UdpReceiver receiver(ip, port);
+        
+        signal(SIGINT, signal_handler);
+        
+        std::cout << "Starting CBOE Feed Handler..." << std::endl;
+        std::cout << "UDP: " << ip << ":" << port << std::endl;
+        std::cout << "Kafka: " << kafka_brokers << std::endl;
+        std::cout << "Threads: " << num_threads << std::endl;
+        
+        // Start receiving UDP packets
+        receiver.start([&dispatcher](const std::vector<char>& packet) {
+            auto message = FastMessageParser::parse(packet);
+            if (message) {
+                dispatcher.dispatch(message);
+            }
+        }, 2, 80); // Pin to CPU core 2 with RT priority 80
+        
+        std::cout << "Server started. Press Ctrl+C to stop." << std::endl;
+        
+        while (!quit.load()) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
-
-        boost::asio::io_context io_context;
-        MessageRouter router;
-        KafkaProducer producer(argv[2]);
         
-        UdpServer server(io_context, std::atoi(argv[1]), router, producer);
+        std::cout << "Stopping receiver..." << std::endl;
+        receiver.stop();
         
-        std::cout << "Server started on port " << argv[1] << std::endl;
+        std::cout << "Flushing Kafka producer..." << std::endl;
+        kafka_producer->flush(5000);
         
-        io_context.run();
+        std::cout << "Shutdown complete." << std::endl;
+        
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
-
+    
     return 0;
 }

@@ -44,7 +44,12 @@ brew install boost librdkafka nlohmann-json cmake
 ```bash
 mkdir build && cd build
 cmake ..
+
+# Linux
 make -j$(nproc)
+
+# macOS
+make -j$(sysctl -n hw.ncpu)
 ```
 
 ## Sử dụng

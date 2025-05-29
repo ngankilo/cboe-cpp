@@ -9,6 +9,12 @@
 #include <pthread.h>
 #include <sched.h>
 
+#ifdef __APPLE__
+#include <mach/thread_policy.h>
+#include <mach/thread_act.h>
+#include <mach/mach.h>
+#endif
+
 UdpReceiver::UdpReceiver(const std::string& ip, uint16_t port)
     : running(false), sockfd(-1)
 {
@@ -43,6 +49,7 @@ void UdpReceiver::start(UdpCallback cb, int core_affinity, int rt_priority) {
     recv_thread = std::thread([this, cb]() {
         /*  Set affinity  */
         if (affinity_core >= 0) {
+#ifdef __linux__
             cpu_set_t cpuset;
             CPU_ZERO(&cpuset);
             CPU_SET(affinity_core, &cpuset);
@@ -51,10 +58,23 @@ void UdpReceiver::start(UdpCallback cb, int core_affinity, int rt_priority) {
                 std::cerr << "Failed to set thread affinity: " 
                           << strerror(errno) << std::endl;
             }
+#elif defined(__APPLE__)
+            // macOS thread affinity - limited support
+            thread_affinity_policy_data_t policy = { affinity_core };
+            thread_port_t mach_thread = pthread_mach_thread_np(pthread_self());
+            kern_return_t result = thread_policy_set(mach_thread, THREAD_AFFINITY_POLICY,
+                                                   (thread_policy_t)&policy, 1);
+            if (result != KERN_SUCCESS) {
+                std::cerr << "Failed to set thread affinity on macOS" << std::endl;
+            }
+#else
+            std::cerr << "Thread affinity not supported on this platform" << std::endl;
+#endif
         }
 
         /* Set RT priority */
         if (priority > 0) {
+#ifdef __linux__
             sched_param sch_params{};
             sch_params.sched_priority = priority;
             int rc = pthread_setschedparam(
@@ -64,6 +84,24 @@ void UdpReceiver::start(UdpCallback cb, int core_affinity, int rt_priority) {
                 std::cerr << "Failed to set RT thread priority: "
                           << strerror(errno) << " (are you root?)" << std::endl;
             }
+#elif defined(__APPLE__)
+            // macOS real-time scheduling
+            thread_time_constraint_policy_data_t ttcpolicy;
+            ttcpolicy.period = 1000000; // 1ms in nanoseconds  
+            ttcpolicy.computation = 500000; // 0.5ms
+            ttcpolicy.constraint = 1000000; // 1ms
+            ttcpolicy.preemptible = 1;
+            
+            thread_port_t mach_thread = pthread_mach_thread_np(pthread_self());
+            kern_return_t result = thread_policy_set(mach_thread, THREAD_TIME_CONSTRAINT_POLICY,
+                                                   (thread_policy_t)&ttcpolicy,
+                                                   THREAD_TIME_CONSTRAINT_POLICY_COUNT);
+            if (result != KERN_SUCCESS) {
+                std::cerr << "Failed to set RT thread priority on macOS" << std::endl;
+            }
+#else
+            std::cerr << "RT scheduling not supported on this platform" << std::endl;
+#endif
         }
 
         /* Receive loop */
