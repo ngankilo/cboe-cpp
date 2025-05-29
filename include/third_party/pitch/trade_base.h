@@ -36,3 +36,4 @@ namespace CboePitch {
     };
 
 } // namespace CboePitch
+#endif //TRADE_BASE
