@@ -9,9 +9,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 find_package(Threads REQUIRED)
 
 # Simple version - just UDP receiver
-add_executable(cboe_feed_handler_simple 
-    src/simple_main.cpp 
-    src/UdpReceiver.cpp
+add_executable(cboe_feed_handler_simple
+        src/UdpReceiver.cpp
 )
 
 target_include_directories(cboe_feed_handler_simple PRIVATE

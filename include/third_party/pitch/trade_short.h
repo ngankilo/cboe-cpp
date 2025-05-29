@@ -1,21 +1,27 @@
+//
+// Created by phamanhtan on 29/5/25.
+//
 #pragma once
+
+#ifndef TRADE_SHORT_H_
+#define TRADE_SHORT_H_
+
 #include "trade_base.h"
 #include <string>
 #include <memory>
 #include <stdexcept>
 
 namespace CboePitch {
-
     class TradeShort : public TradeBase {
     private:
         uint32_t price;
 
     public:
-        TradeShort(uint32_t ts, uint32_t sh, const std::string& sym, uint32_t pr)
+        TradeShort(uint32_t ts, uint32_t sh, const std::string &sym, uint32_t pr)
             : TradeBase(ts, sh, sym), price(pr) {
         }
 
-        static std::unique_ptr<TradeShort> parse(const std::string& line) {
+        static std::unique_ptr<TradeShort> parse(const std::string &line) {
             if (line.size() < 20) {
                 throw std::invalid_argument("Invalid TradeShort length");
             }
@@ -25,7 +31,7 @@ namespace CboePitch {
                 std::string sym = line.substr(15, 6);
                 uint32_t pr = std::stoul(line.substr(21, 10));
                 return std::make_unique<TradeShort>(ts, sh, sym, pr);
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 throw std::invalid_argument("TradeShort parse error: " + std::string(e.what()));
             }
         }
@@ -40,5 +46,5 @@ namespace CboePitch {
             return std::string(buffer);
         }
     };
-
 } // namespace CboePitch
+#endif

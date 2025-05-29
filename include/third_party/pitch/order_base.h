@@ -10,21 +10,21 @@
 #include <stdexcept>
 
 namespace CboePitch {
-
     class OrderBase : public Message {
     protected:
         uint32_t timestamp;
         std::string orderId;
         std::string symbol;
 
-        OrderBase(uint32_t ts, const std::string& oid, const std::string& sym = "")
+        OrderBase(uint32_t ts, const std::string &oid, const std::string &sym = "")
             : timestamp(ts), orderId(oid), symbol(sym) {
             validate();
         }
 
     public:
         std::string getSymbol() const override { return symbol; }
-        void setSymbol(const std::string& sym) override {
+
+        void setSymbol(const std::string &sym) override {
             if (sym.size() > 8) throw std::invalid_argument("Symbol must be <= 8 characters");
             symbol = sym;
         }
@@ -35,6 +35,5 @@ namespace CboePitch {
             if (symbol.size() > 8) throw std::invalid_argument("Symbol must be <= 8 characters");
         }
     };
-
 } // namespace CboePitch
 #endif //ORDER_BASE_H

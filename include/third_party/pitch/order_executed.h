@@ -1,3 +1,10 @@
+//
+// Created by phamanhtan on 29/5/25.
+//
+
+#ifndef ORDER_EXECUTED_H
+#define ORDER_EXECUTED_H
+
 #pragma once
 #include "order_base.h"
 #include <string>
@@ -5,19 +12,19 @@
 #include <stdexcept>
 
 namespace CboePitch {
-
     class OrderExecuted : public OrderBase {
     private:
         uint32_t executedShares;
         std::string executionId;
 
     public:
-        OrderExecuted(uint32_t ts, const std::string& oid, uint32_t es, const std::string& eid, const std::string& sym = "")
+        OrderExecuted(uint32_t ts, const std::string &oid, uint32_t es, const std::string &eid,
+                      const std::string &sym = "")
             : OrderBase(ts, oid, sym), executedShares(es), executionId(eid) {
             validate();
         }
 
-        static std::unique_ptr<OrderExecuted> parse(const std::string& line) {
+        static std::unique_ptr<OrderExecuted> parse(const std::string &line) {
             if (line.size() < 29) {
                 throw std::invalid_argument("Invalid OrderExecuted length");
             }
@@ -27,7 +34,7 @@ namespace CboePitch {
                 uint32_t es = std::stoul(line.substr(21, 6));
                 std::string eid = line.substr(27, 12);
                 return std::make_unique<OrderExecuted>(ts, oid, es, eid);
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 throw std::invalid_argument("OrderExecuted parse error: " + std::string(e.what()));
             }
         }
@@ -48,5 +55,5 @@ namespace CboePitch {
             if (executionId.size() != 12) throw std::invalid_argument("Execution ID must be 12 characters");
         }
     };
-
 } // namespace CboePitch
+#endif
