@@ -20,13 +20,12 @@
 #include "end_of_session.h"
 #include "auction_update.h"
 #include "auction_summary.h"
-#include "seq_unit_header.h"
+#include "sequence_unit_header.h"
 #include <memory>
 #include <stdexcept>
 
 namespace CboePitch {
-
-    std::unique_ptr<Message> parseMessage(const uint8_t* data, size_t size) {
+    std::unique_ptr<Message> parseMessage(const uint8_t *data, size_t size) {
         if (size < 2) throw std::invalid_argument("Message too short");
         uint8_t messageType = data[1];
         switch (messageType) {
@@ -48,9 +47,8 @@ namespace CboePitch {
         }
     }
 
-    std::unique_ptr<Message> parseHeader(const uint8_t* data, size_t size) {
+    std::unique_ptr<Message> parseHeader(const uint8_t *data, size_t size) {
         return SeqUnitHeader::parse(data, size);
     }
-
 } // namespace CboePitch
 #endif //MESSAGE_FACTORY_H

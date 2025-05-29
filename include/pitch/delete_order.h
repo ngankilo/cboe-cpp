@@ -1,10 +1,9 @@
 //
 // Created by phamanhtan on 29/5/25.
 //
-#pragma once
 
-#ifdef ADD_ORDER_SHORT_H
-#define ADD_ORDER_SHORT_H
+#ifndef DELETE_ORDER_H
+#define DELETE_ORDER_H
 #pragma once
 #include "order_base.h"
 #include <string>

@@ -1,33 +1,31 @@
 //
 // Created by phamanhtan on 29/5/25.
 //
-
-#ifndef UNIT_CLEAR_H
-#define UNIT_CLEAR_H
 #pragma once
+
+#ifndef ORDER_BASE_H
+#define ORDER_BASE_H
 #include "message.h"
 #include <string>
 #include <cstdint>
 #include <stdexcept>
 
 namespace CboePitch {
-
-    class TradeBase : public Message {
+    class OrderBase : public Message {
     protected:
         uint64_t timestamp;
+        uint64_t orderId;
         std::string symbol;
-        uint32_t quantity;
-        uint64_t price;
-        uint64_t executionId;
 
     public:
-        TradeBase(uint64_t ts, const std::string& sym, uint32_t qty, uint64_t prc, uint64_t eid)
-            : timestamp(ts), symbol(sym), quantity(qty), price(prc), executionId(eid) {
+        OrderBase(uint64_t ts, uint64_t oid, const std::string &sym)
+            : timestamp(ts), orderId(oid), symbol(sym) {
             validate();
         }
 
         std::string getSymbol() const override { return symbol; }
-        void setSymbol(const std::string& sym) override {
+
+        void setSymbol(const std::string &sym) override {
             if (sym.size() > 6) throw std::invalid_argument("Symbol must be <= 6 characters");
             symbol = sym;
         }
@@ -37,6 +35,5 @@ namespace CboePitch {
             if (symbol.size() > 6) throw std::invalid_argument("Symbol must be <= 6 characters");
         }
     };
-
 } // namespace CboePitch
-#endif //UNIT_CLEAR_H
+#endif

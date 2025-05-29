@@ -1,6 +1,9 @@
 //
 // Created by phamanhtan on 29/5/25.
 //
+
+#ifndef _TRADEBASE_H_
+#define _TRADEBASE_H_
 #pragma once
 #include "message.h"
 #include <string>
@@ -8,7 +11,6 @@
 #include <stdexcept>
 
 namespace CboePitch {
-
     class TradeBase : public Message {
     protected:
         uint64_t timestamp;
@@ -18,13 +20,14 @@ namespace CboePitch {
         uint64_t executionId;
 
     public:
-        TradeBase(uint64_t ts, const std::string& sym, uint32_t qty, uint64_t prc, uint64_t eid)
+        TradeBase(uint64_t ts, const std::string &sym, uint32_t qty, uint64_t prc, uint64_t eid)
             : timestamp(ts), symbol(sym), quantity(qty), price(prc), executionId(eid) {
             validate();
         }
 
         std::string getSymbol() const override { return symbol; }
-        void setSymbol(const std::string& sym) override {
+
+        void setSymbol(const std::string &sym) override {
             if (sym.size() > 6) throw std::invalid_argument("Symbol must be <= 6 characters");
             symbol = sym;
         }
@@ -34,6 +37,5 @@ namespace CboePitch {
             if (symbol.size() > 6) throw std::invalid_argument("Symbol must be <= 6 characters");
         }
     };
-
 } // namespace CboePitch
 #endif //TRADE_BASE

@@ -1,5 +1,9 @@
-#ifndef _MODIFY_ORDER_H_
-#define _MODIFY_ORDER_H_
+//
+// Created by phamanhtan on 29/5/25.
+//
+
+#ifndef REDUCE_SIZE_H
+#define REDUCE_SIZE_H
 #pragma once
 #include "order_base.h"
 #include <string>
@@ -8,18 +12,17 @@
 #include <cstring>
 
 namespace CboePitch {
-
     class ReduceSize : public OrderBase {
     private:
         uint32_t cancelledQuantity;
 
     public:
-        ReduceSize(uint64_t ts, uint64_t oid, uint32_t cqty, const std::string& sym)
+        ReduceSize(uint64_t ts, uint64_t oid, uint32_t cqty, const std::string &sym)
             : OrderBase(ts, oid, sym), cancelledQuantity(cqty) {
             validate();
         }
 
-        static std::unique_ptr<ReduceSize> parse(const uint8_t* data, size_t size) {
+        static std::unique_ptr<ReduceSize> parse(const uint8_t *data, size_t size) {
             if (size < 22) throw std::invalid_argument("Invalid ReduceSize length");
             if (data[1] != 0x39) throw std::invalid_argument("Invalid ReduceSize type");
             uint64_t ts, oid;
@@ -46,6 +49,5 @@ namespace CboePitch {
             OrderBase::validate();
         }
     };
-
 } // namespace CboePitch
-#endif
+#endif //REDUCE_SIZE_H
