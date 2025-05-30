@@ -7,7 +7,7 @@ CC = clang++
 CFLAGS = -std=c++17 -I.
 
 # Target executable
-TARGET = test_cboe
+TARGET = cboe
 
 # Source files
 SOURCES = main.cpp

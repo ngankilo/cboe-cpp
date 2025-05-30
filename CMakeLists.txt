@@ -4,10 +4,8 @@ project(cboe-cpp)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Include directories
 include_directories(include)
 
-# Source files
 set(SOURCES
         src/main.cpp
         src/UdpReceiver.cpp
@@ -33,5 +31,4 @@ set(SOURCES
         src/seq_unit_header.cpp
 )
 
-# Add executable
 add_executable(test_cboe ${SOURCES})

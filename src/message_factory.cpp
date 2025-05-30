@@ -11,7 +11,7 @@ namespace CboePitch {
             throw std::invalid_argument("Message too short");
         }
 
-        uint8_t messageType = data[0];
+        uint8_t messageType = data[8];
         const auto &dispatchTable = MessageDispatch::getDispatchTable();
         auto it = dispatchTable.find(messageType);
         if (it == dispatchTable.end()) {
