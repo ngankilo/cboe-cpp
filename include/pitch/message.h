@@ -1,11 +1,10 @@
 //
-// Created by phamanhtan on 29/5/25.
+// Created by phamanhtan on 30/5/25.
 //
 
-#pragma once
+#ifndef MESSAGE_H
+#define MESSAGE_H
 
-#ifndef PITCH_MESSAGE_H
-#define PITCH_MESSAGE_H
 #include <string>
 
 namespace CboePitch {
@@ -13,13 +12,21 @@ namespace CboePitch {
     public:
         virtual ~Message() = default;
 
-        virtual std::string getSymbol() const = 0;
-
-        virtual void setSymbol(const std::string &sym) = 0;
-
-        virtual char getMessageType() const = 0;
-
         virtual std::string toString() const = 0;
+
+        virtual std::string getSymbol() const { return ""; }
+
+        virtual void setSymbol(const std::string &symbol) {
+        }
+
+        uint8_t getMessageType() const { return messageType; }
+
+    protected:
+        uint8_t messageType;
+
+        explicit Message(uint8_t type) : messageType(type) {
+        }
     };
 } // namespace CboePitch
-#endif
+
+#endif // MESSAGE_H

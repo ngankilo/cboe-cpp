@@ -7,7 +7,6 @@
 #define ORDER_BASE_H
 #include "message.h"
 #include <string>
-#include <cstdint>
 #include <stdexcept>
 
 namespace CboePitch {

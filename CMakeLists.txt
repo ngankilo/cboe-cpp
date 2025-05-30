@@ -1,79 +1,37 @@
 cmake_minimum_required(VERSION 3.10)
-project(cboe_feed_handler)
+project(cboe-cpp)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 
-# Find required packages
-find_package(Threads REQUIRED)
+# Include directories
+include_directories(include)
 
-# Simple version - just UDP receiver
-add_executable(cboe_feed_handler_simple
+# Source files
+set(SOURCES
+        src/main.cpp
         src/UdpReceiver.cpp
+        src/message_factory.cpp
+        src/gap_login.cpp
+        src/login_response.cpp
+        src/gap_request.cpp
+        src/gap_response.cpp
+        src/unit_clear.cpp
+        src/trading_status.cpp
+        src/add_order.cpp
+        src/order_executed.cpp
+        src/order_executed_at_price.cpp
+        src/reduce_size.cpp
+        src/modify_order.cpp
+        src/delete_order.cpp
+        src/trade.cpp
+        src/trade_break.cpp
+        src/calculated_value.cpp
+        src/end_of_session.cpp
+        src/auction_update.cpp
+        src/auction_summary.cpp
+        src/seq_unit_header.cpp
 )
 
-target_include_directories(cboe_feed_handler_simple PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(cboe_feed_handler_simple PRIVATE
-    Threads::Threads
-)
-
-# Original version (commented out for now due to dependencies)
-# find_package(Boost REQUIRED COMPONENTS system thread)
-# 
-# # Try to find nlohmann_json
-# find_package(nlohmann_json QUIET)
-# if(NOT nlohmann_json_FOUND)
-#     # If not found, use header-only version
-#     include(FetchContent)
-#     FetchContent_Declare(
-#         nlohmann_json
-#         URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.hpp
-#         DOWNLOAD_NO_EXTRACT TRUE
-#         DOWNLOAD_NAME json.hpp
-#     )
-#     FetchContent_Populate(nlohmann_json)
-#     file(COPY ${nlohmann_json_SOURCE_DIR}/json.hpp DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/include/nlohmann/)
-# endif()
-# 
-# # Optional: Try to find librdkafka
-# find_package(PkgConfig QUIET)
-# if(PKG_CONFIG_FOUND)
-#     pkg_check_modules(RDKAFKA rdkafka++)
-# endif()
-# 
-# # Add source files (exclude the new main files for now)
-# file(GLOB SOURCES 
-#     "src/UdpReceiver.cpp"
-#     "src/MessageFactory.cpp"
-# )
-# 
-# # Create executable with original main
-# add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES})
-# 
-# # Include directories
-# target_include_directories(${PROJECT_NAME} PRIVATE
-#     ${CMAKE_CURRENT_SOURCE_DIR}/include
-#     ${Boost_INCLUDE_DIRS}
-# )
-# 
-# # Link libraries
-# target_link_libraries(${PROJECT_NAME} PRIVATE
-#     Threads::Threads
-#     ${Boost_LIBRARIES}
-# )
-# 
-# # Link Kafka if available
-# if(RDKAFKA_FOUND)
-#     target_include_directories(${PROJECT_NAME} PRIVATE ${RDKAFKA_INCLUDE_DIRS})
-#     target_link_libraries(${PROJECT_NAME} PRIVATE ${RDKAFKA_LIBRARIES})
-#     target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_KAFKA)
-# endif()
-# 
-# # Link nlohmann_json if found
-# if(nlohmann_json_FOUND)
-#     target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
-# endif() 
+# Add executable
+add_executable(test_cboe ${SOURCES})
