@@ -20,16 +20,16 @@ namespace CboePitch {
         return OrderExecutedAtPrice(timestamp, orderId, executedQuantity, price, executionId, contraOrderId, contraPid);
     }
 
-    std::string OrderExecutedAtPrice::toString() const {
-        std::stringstream ss;
-        ss << "OrderExecutedAtPrice { Timestamp: " << timestamp
-           << ", OrderId: " << orderId
-           << ", ExecutedQuantity: " << executedQuantity
-           << ", Price: " << price
-           << ", ExecutionId: " << executionId
-           << ", ContraOrderId: " << contraOrderId
-           << ", ContraPID: " << contraPid << " }";
-        return ss.str();
-    }
+    // std::string OrderExecutedAtPrice::toString() const {
+    //     std::stringstream ss;
+    //     ss << "OrderExecutedAtPrice { Timestamp: " << timestamp
+    //        << ", OrderId: " << orderId
+    //        << ", ExecutedQuantity: " << executedQuantity
+    //        << ", Price: " << price
+    //        << ", ExecutionId: " << executionId
+    //        << ", ContraOrderId: " << contraOrderId
+    //        << ", ContraPID: " << contraPid << " }";
+    //     return ss.str();
+    // }
 
 } // namespace CboePitch

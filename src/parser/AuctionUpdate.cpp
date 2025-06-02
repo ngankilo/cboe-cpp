@@ -17,13 +17,13 @@ namespace CboePitch {
         return AuctionUpdate(timestamp, symbol, auctionType, indicativeQuantity, indicativePrice);
     }
 
-    std::string AuctionUpdate::toString() const {
-        std::stringstream ss;
-        ss << "AuctionUpdate { Timestamp: " << timestamp
-                << ", Symbol: " << symbol
-                << ", AuctionType: " << auctionType
-                << ", IndicativeQuantity: " << indicativeQuantity
-                << ", IndicativePrice: " << indicativePrice << " }";
-        return ss.str();
-    }
+    // std::string AuctionUpdate::toString() const {
+    //     std::stringstream ss;
+    //     ss << "AuctionUpdate { Timestamp: " << timestamp
+    //             << ", Symbol: " << symbol
+    //             << ", AuctionType: " << auctionType
+    //             << ", IndicativeQuantity: " << indicativeQuantity
+    //             << ", IndicativePrice: " << indicativePrice << " }";
+    //     return ss.str();
+    // }
 } // namespace CboePitch

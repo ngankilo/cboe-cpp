@@ -16,12 +16,12 @@ namespace CboePitch {
         return ModifyOrder(timestamp, orderId, quantity, price);
     }
 
-    std::string ModifyOrder::toString() const {
-        std::stringstream ss;
-        ss << "ModifyOrder { Timestamp: " << timestamp
-                << ", OrderId: " << orderId
-                << ", Quantity: " << quantity
-                << ", Price: " << price << " }";
-        return ss.str();
-    }
+    // std::string ModifyOrder::toString() const {
+    //     std::stringstream ss;
+    //     ss << "ModifyOrder { Timestamp: " << timestamp
+    //             << ", OrderId: " << orderId
+    //             << ", Quantity: " << quantity
+    //             << ", Price: " << price << " }";
+    //     return ss.str();
+    // }
 } // namespace CboePitch

@@ -16,12 +16,12 @@ namespace CboePitch {
         return AuctionSummary(timestamp, symbol, executedQuantity, clearingPrice);
     }
 
-    std::string AuctionSummary::toString() const {
-        std::stringstream ss;
-        ss << "AuctionSummary { Timestamp: " << timestamp
-                << ", Symbol: " << symbol
-                << ", ExecutedQuantity: " << executedQuantity
-                << ", ClearingPrice: " << clearingPrice << " }";
-        return ss.str();
-    }
+    // std::string AuctionSummary::toString() const {
+    //     std::stringstream ss;
+    //     ss << "AuctionSummary { Timestamp: " << timestamp
+    //             << ", Symbol: " << symbol
+    //             << ", ExecutedQuantity: " << executedQuantity
+    //             << ", ClearingPrice: " << clearingPrice << " }";
+    //     return ss.str();
+    // }
 } // namespace CboePitch

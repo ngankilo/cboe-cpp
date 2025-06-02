@@ -17,13 +17,13 @@ namespace CboePitch {
         return CalculatedValue(timestamp, symbol, valueCategory, value, valueTimestamp);
     }
 
-    std::string CalculatedValue::toString() const {
-        std::stringstream ss;
-        ss << "CalculatedValue { Timestamp: " << timestamp
-                << ", Symbol: " << symbol
-                << ", ValueCategory: " << valueCategory
-                << ", Value: " << value
-                << ", ValueTimestamp: " << valueTimestamp << " }";
-        return ss.str();
-    }
+    // std::string CalculatedValue::toString() const {
+    //     std::stringstream ss;
+    //     ss << "CalculatedValue { Timestamp: " << timestamp
+    //             << ", Symbol: " << symbol
+    //             << ", ValueCategory: " << valueCategory
+    //             << ", Value: " << value
+    //             << ", ValueTimestamp: " << valueTimestamp << " }";
+    //     return ss.str();
+    // }
 } // namespace CboePitch

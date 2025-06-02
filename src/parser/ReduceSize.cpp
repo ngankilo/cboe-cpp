@@ -14,11 +14,11 @@ namespace CboePitch {
         return ReduceSize(timestamp, orderId, cancelledQuantity);
     }
 
-    std::string ReduceSize::toString() const {
-        std::stringstream ss;
-        ss << "ReduceSize { Timestamp: " << timestamp
-                << ", OrderId: " << orderId
-                << ", CancelledQuantity: " << cancelledQuantity << " }";
-        return ss.str();
-    }
+    // std::string ReduceSize::toString() const {
+    //     std::stringstream ss;
+    //     ss << "ReduceSize { Timestamp: " << timestamp
+    //             << ", OrderId: " << orderId
+    //             << ", CancelledQuantity: " << cancelledQuantity << " }";
+    //     return ss.str();
+    // }
 } // namespace CboePitch
