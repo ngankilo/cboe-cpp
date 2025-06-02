@@ -35,6 +35,12 @@ namespace CboePitch {
         uint64_t getTimestamp() const { return timestamp; }
         uint64_t getOrderId() const { return orderId; }
 
+        const std::string &getSymbol() const override {
+            //TODO Implement logic get Symbol from map via order id
+            static const std::string naSymbol = "N/A";
+            return naSymbol;
+        }
+
     private:
         uint64_t timestamp;
         uint64_t orderId;
