@@ -10,6 +10,8 @@ namespace CboePitch {
 
         virtual std::string toString() const = 0;
 
+        virtual std::string getSymbol() { return ""; }
+
         virtual size_t getMessageSize() const = 0;
 
         virtual uint8_t getMessageType() const = 0;
@@ -44,11 +46,12 @@ namespace CboePitch {
         static uint64_t encodePrice(double price) {
             return static_cast<uint64_t>(price * 10000000.0 + 0.5); // round to nearest
         }
-        static std::string readAscii(const uint8_t* data, size_t length) {
-            return std::string(reinterpret_cast<const char*>(data), length);
+
+        static std::string readAscii(const uint8_t *data, size_t length) {
+            return std::string(reinterpret_cast<const char *>(data), length);
         }
 
-        static std::string trimRight(const std::string& str) {
+        static std::string trimRight(const std::string &str) {
             size_t end = str.find_last_not_of(' ');
             return (end == std::string::npos) ? "" : str.substr(0, end + 1);
         }

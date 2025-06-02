@@ -14,7 +14,7 @@ namespace CboePitch {
         static constexpr size_t MESSAGE_SIZE = 42;
 
         static AddOrder parse(const uint8_t *data, size_t size, size_t offset = 0) {
-            if (size < MESSAGE_SIZE) {
+            if (size < offset + MESSAGE_SIZE) {
                 throw std::invalid_argument("AddOrder too short");
             }
 
@@ -22,10 +22,13 @@ namespace CboePitch {
             uint64_t orderId = Message::readUint64LE(data + offset + 10);
             char side = static_cast<char>(data[offset + 18]);
             uint32_t quantity = Message::readUint32LE(data + offset + 19);
-            std::string symbol(reinterpret_cast<const char *>(data + offset + 23), 6);
-            std::string participantId(reinterpret_cast<const char *>(data + offset + 37), 4);
-            // Reserved byte at offset + 41 is ignored
+            std::string symbol = Message::readAscii(data + offset + 23, 6);
+            std::string participantId = Message::readAscii(data + offset + 37, 4);
             const double price = Message::decodePrice(data + offset + 29);
+
+            // Trim trailing spaces for symbol and participantId
+            symbol = Message::trimRight(symbol);
+            participantId = Message::trimRight(participantId);
 
             return AddOrder(timestamp, orderId, side, quantity, symbol, price, participantId);
         }
@@ -33,13 +36,13 @@ namespace CboePitch {
         std::string toString() const override {
             std::ostringstream oss;
             oss << "AddOrder{timestamp=" << timestamp
-                    << ", orderId=" << orderId
-                    << ", side=" << sideIndicator
-                    << ", quantity=" << quantity
-                    << ", symbol=" << symbol
-                    << ", price=" << price
-                    << ", participantId=" << participantId
-                    << "}";
+                << ", orderId=" << orderId
+                << ", side=" << sideIndicator
+                << ", quantity=" << quantity
+                << ", symbol=" << symbol
+                << ", price=" << price
+                << ", participantId=" << participantId
+                << "}";
             return oss.str();
         }
 
@@ -51,8 +54,8 @@ namespace CboePitch {
         uint64_t getOrderId() const { return orderId; }
         char getSide() const { return sideIndicator; }
         uint32_t getQuantity() const { return quantity; }
-        std::string getSymbol() const { return symbol; }
-        uint64_t getPrice() const { return price; }
+        std::string getSymbol() const override { return symbol; }
+        double getPrice() const { return price; }
         std::string getParticipantId() const { return participantId; }
 
     private:
@@ -61,15 +64,13 @@ namespace CboePitch {
         char sideIndicator;
         uint32_t quantity;
         std::string symbol;
-        uint64_t price;
+        double price;
         std::string participantId;
-        uint8_t data;
 
         AddOrder(uint64_t ts, uint64_t ordId, char side, uint32_t qty,
-                 const std::string &sym, uint64_t prc, const std::string &pid, uint8_t data = 0)
+                 const std::string &sym, double prc, const std::string &pid)
             : timestamp(ts), orderId(ordId), sideIndicator(side),
-              quantity(qty), symbol(sym), price(prc), participantId(pid) {
-        }
+              quantity(qty), symbol(sym), price(prc), participantId(pid) {}
     };
 } // namespace CboePitch
 
