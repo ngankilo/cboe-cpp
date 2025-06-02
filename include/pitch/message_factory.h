@@ -1,22 +1,19 @@
-//
-// Created by phamanhtan on 30/5/25.
-//
-
 #ifndef MESSAGE_FACTORY_H
 #define MESSAGE_FACTORY_H
 
-#include "seq_unit_header.h"
 #include <memory>
+#include <vector>
 #include "message.h"
 
 namespace CboePitch {
+    class SeqUnitHeader;
+    class Message;
+
     class MessageFactory {
     public:
-        static std::unique_ptr<Message> parseMessage(const uint8_t *data, size_t size);
-
-        static SeqUnitHeader parseHeader(const uint8_t *data, size_t size) {
-            return SeqUnitHeader::parse(data, size);
-        }
+        static std::shared_ptr<Message> parseMessage(const uint8_t* data, size_t size);
+        static SeqUnitHeader parseHeader(const uint8_t* data, size_t size);
+        static std::vector<std::shared_ptr<Message>> parseMessages(const uint8_t* data, size_t size);
     };
 } // namespace CboePitch
 

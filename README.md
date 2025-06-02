@@ -20,6 +20,7 @@
 - **CPU affinity**: Pin thread vào CPU core cụ thể
 - **Zero-copy processing**: Tối ưu memory allocation
 - **Kafka batching**: Cấu hình tối ưu cho throughput
+- **Disruptor**: Thư viện LMAX để truyền dữ liệu hiệu năng cực cao
 
 ## Yêu cầu
 
@@ -42,14 +43,11 @@ brew install boost librdkafka nlohmann-json cmake
 ## Build
 
 ```bash
-mkdir build && cd build
-cmake ..
-
-# Linux
-make -j$(nproc)
-
-# macOS
-make -j$(sysctl -n hw.ncpu)
+mkdir build
+mkdir obj
+cd src
+make clean
+make all
 ```
 
 ## Sử dụng

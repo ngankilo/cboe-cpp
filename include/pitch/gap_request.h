@@ -24,7 +24,7 @@ namespace CboePitch {
         uint16_t count;
 
         GapRequest(uint8_t u, uint32_t seq, uint16_t cnt)
-            : Message(0x03), unit(u), sequence(seq), count(cnt) {
+            : unit(u), sequence(seq), count(cnt) {
         }
     };
 } // namespace CboePitch

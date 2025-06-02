@@ -26,7 +26,7 @@ namespace CboePitch {
         char status;
 
         GapResponse(uint8_t u, uint32_t seq, uint16_t cnt, char stat)
-            : Message(0x04), unit(u), sequence(seq), count(cnt), status(stat) {
+            : unit(u), sequence(seq), count(cnt), status(stat) {
         }
     };
 } // namespace CboePitch

@@ -1,4 +1,3 @@
-// src/UdpReceiver.cpp
 #include "UdpReceiver.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -10,7 +9,8 @@
 #include <sched.h>
 
 UdpReceiver::UdpReceiver(const std::string &ip, uint16_t port)
-    : running(false), sockfd(-1) {
+    : sockfd(-1), running(false) // Match declaration order
+{
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         perror("socket");
