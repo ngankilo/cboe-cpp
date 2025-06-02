@@ -6,8 +6,8 @@ TARGET = cboe_feed_handler
 
 SRCDIR = ./src
 PARSERDIR = $(SRCDIR)/parser
-OBJDIR = .
-BINDIR = .
+OBJDIR = ./obj
+BINDIR = ./bin
 
 SRC_SOURCES = main.cpp UdpReceiver.cpp  Dispatcher.cpp KafkaProducer.cpp UdpMessageHandler.cpp MessageFactory.cpp
 #PARSER_SOURCES = AddOrder.cpp AuctionSummary.cpp AuctionUpdate.cpp CalculatedValue.cpp DeleteOrder.cpp \
@@ -20,10 +20,11 @@ SRC_OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRC_SOURCES))
 PARSER_OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(PARSER_SOURCES))
 OBJS = $(SRC_OBJS) $(PARSER_OBJS)
 
-all: $(BINDIR)/$(TARGET) $(BINDIR)/udp_example
-
-$(BINDIR)/udp_example: $(filter-out $(OBJDIR)/main.o,$(OBJS)) $(OBJDIR)/main_udp_example.o
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^
+all: $(BINDIR)/$(TARGET)
+#$(BINDIR)/udp_example
+#
+#$(BINDIR)/udp_example: $(filter-out $(OBJDIR)/main.o,$(OBJS)) $(OBJDIR)/main_udp_example.o
+#	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^
 
 $(BINDIR)/$(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^

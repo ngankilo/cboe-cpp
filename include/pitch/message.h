@@ -10,7 +10,10 @@ namespace CboePitch {
 
         virtual std::string toString() const = 0;
 
-        virtual std::string getSymbol() { return ""; }
+        virtual const std::string &getSymbol() const {
+            static const std::string empty;
+            return empty;
+        }
 
         virtual size_t getMessageSize() const = 0;
 

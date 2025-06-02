@@ -41,7 +41,7 @@ namespace CboePitch {
         uint8_t getMessageType() const override { return MESSAGE_TYPE; }
 
         uint64_t getTimestamp() const { return timestamp; }
-        const std::string &getSymbol() const { return symbol; }
+        const std::string &getSymbol() const override { return symbol; }
         char getValueCategory() const { return valueCategory; }
         double getValue() const { return value; }
         uint64_t getValueTimestamp() const { return valueTimestamp; }

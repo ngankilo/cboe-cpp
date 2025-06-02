@@ -22,7 +22,7 @@ namespace CboePitch {
             validate();
         }
 
-        std::string getSymbol() const override { return symbol; }
+        const std::string &getSymbol() const override { return symbol; }
 
         void setSymbol(const std::string &sym) override {
             if (sym.size() > 6) throw std::invalid_argument("Symbol must be <= 6 characters");

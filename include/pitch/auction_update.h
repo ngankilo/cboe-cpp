@@ -43,7 +43,7 @@ namespace CboePitch {
         uint8_t getMessageType() const override { return MESSAGE_TYPE; }
 
         uint64_t getTimestamp() const { return timestamp; }
-        const std::string& getSymbol() const { return symbol; }
+        const std::string &getSymbol() const override { return symbol; }
         char getAuctionType() const { return auctionType; }
         uint32_t getBuyShares() const { return buyShares; }
         uint32_t getSellShares() const { return sellShares; }

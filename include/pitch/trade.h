@@ -72,7 +72,7 @@ namespace CboePitch {
 
         // Accessors
         uint64_t getTimestamp() const { return timestamp; }
-        const std::string &getSymbol() const { return symbol; }
+        const std::string &getSymbol() const override { return symbol; }
         uint32_t getQuantity() const { return quantity; }
         double getPrice() const { return price; }
         uint64_t getExecutionId() const { return executionId; }

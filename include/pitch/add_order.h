@@ -36,13 +36,13 @@ namespace CboePitch {
         std::string toString() const override {
             std::ostringstream oss;
             oss << "AddOrder{timestamp=" << timestamp
-                << ", orderId=" << orderId
-                << ", side=" << sideIndicator
-                << ", quantity=" << quantity
-                << ", symbol=" << symbol
-                << ", price=" << price
-                << ", participantId=" << participantId
-                << "}";
+                    << ", orderId=" << orderId
+                    << ", side=" << sideIndicator
+                    << ", quantity=" << quantity
+                    << ", symbol=" << symbol
+                    << ", price=" << price
+                    << ", participantId=" << participantId
+                    << "}";
             return oss.str();
         }
 
@@ -54,7 +54,7 @@ namespace CboePitch {
         uint64_t getOrderId() const { return orderId; }
         char getSide() const { return sideIndicator; }
         uint32_t getQuantity() const { return quantity; }
-        std::string getSymbol() const override { return symbol; }
+        const std::string &getSymbol() const override { return symbol; }
         double getPrice() const { return price; }
         std::string getParticipantId() const { return participantId; }
 
@@ -70,7 +70,8 @@ namespace CboePitch {
         AddOrder(uint64_t ts, uint64_t ordId, char side, uint32_t qty,
                  const std::string &sym, double prc, const std::string &pid)
             : timestamp(ts), orderId(ordId), sideIndicator(side),
-              quantity(qty), symbol(sym), price(prc), participantId(pid) {}
+              quantity(qty), symbol(sym), price(prc), participantId(pid) {
+        }
     };
 } // namespace CboePitch
 
