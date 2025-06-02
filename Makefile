@@ -1,19 +1,19 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -O2 -pthread
 
-INCLUDES = -I../include
+INCLUDES = -I./include
 TARGET = cboe_feed_handler
 
-SRCDIR = .
+SRCDIR = ./src
 PARSERDIR = $(SRCDIR)/parser
 OBJDIR = .
 BINDIR = .
 
-SRC_SOURCES = main.cpp UdpReceiver.cpp CboeParser.cpp Dispatcher.cpp KafkaProducer.cpp UdpMessageHandler.cpp
-PARSER_SOURCES = AddOrder.cpp AuctionSummary.cpp AuctionUpdate.cpp CalculatedValue.cpp DeleteOrder.cpp \
-                 EndOfSession.cpp GapLogin.cpp GapRequest.cpp GapResponse.cpp LoginResponse.cpp \
-                 ModifyOrder.cpp OrderExecuted.cpp OrderExecutedAtPrice.cpp ReduceSize.cpp \
-                 SequenceUnitHeader.cpp Trade.cpp TradeBreak.cpp TradingStatus.cpp UnitClear.cpp
+SRC_SOURCES = main.cpp UdpReceiver.cpp  Dispatcher.cpp KafkaProducer.cpp UdpMessageHandler.cpp MessageFactory.cpp
+#PARSER_SOURCES = AddOrder.cpp AuctionSummary.cpp AuctionUpdate.cpp CalculatedValue.cpp DeleteOrder.cpp \
+#                 EndOfSession.cpp GapLogin.cpp GapRequest.cpp GapResponse.cpp LoginResponse.cpp \
+#                 ModifyOrder.cpp OrderExecuted.cpp OrderExecutedAtPrice.cpp ReduceSize.cpp \
+#                 SequenceUnitHeader.cpp Trade.cpp TradeBreak.cpp TradingStatus.cpp UnitClear.cpp
 
 SOURCES = $(SRC_SOURCES) $(PARSER_SOURCES)
 SRC_OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRC_SOURCES))
@@ -37,10 +37,10 @@ $(OBJDIR)/%.o: $(PARSERDIR)/%.cpp | $(OBJDIR)
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-$(OBJDIR)/main.o: $(SRCDIR)/main.cpp ../include/UdpReceiver.hpp ../include/pitch/seq_unit_header.h ../include/pitch/message_factory.h ../include/pitch/message.h ../include/DisruptorRouter.hpp
-$(OBJDIR)/UdpReceiver.o: $(SRCDIR)/UdpReceiver.cpp ../include/UdpReceiver.hpp
-$(OBJDIR)/CboeParser.o: $(SRCDIR)/CboeParser.cpp ../include/pitch/message_factory.h ../include/pitch/message_dispatcher.h ../include/pitch/seq_unit_header.h
-$(OBJDIR)/SequenceUnitHeader.o: $(PARSERDIR)/SequenceUnitHeader.cpp ../include/pitch/seq_unit_header.h ../include/pitch/message_dispatcher.h
+$(OBJDIR)/main.o: $(SRCDIR)/main.cpp ./include/UdpReceiver.hpp ./include/pitch/seq_unit_header.h ./include/pitch/message_factory.h ./include/pitch/message.h ./include/DisruptorRouter.hpp
+$(OBJDIR)/UdpReceiver.o: $(SRCDIR)/UdpReceiver.cpp ./include/UdpReceiver.hpp
+$(OBJDIR)/CboeParser.o: ./include/pitch/message_factory.h ./include/pitch/message_dispatcher.h ./include/pitch/seq_unit_header.h
+#$(OBJDIR)/SequenceUnitHeader.o: $(PARSERDIR)/SequenceUnitHeader.cpp ./include/pitch/seq_unit_header.h ./include/pitch/message_dispatcher.h
 
 clean:
 	rm -f $(OBJDIR)/*.o $(BINDIR)/$(TARGET)

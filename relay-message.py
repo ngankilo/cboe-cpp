@@ -47,5 +47,5 @@ def forward_pcap_to_udp(pcap_file, target_ip="127.0.0.1", target_port=9000, inte
 
 if __name__ == "__main__":
     # Example usage
-    pcap_file = "/Users/phamanhtan/Developer/Equix/cboe-feed-handler-cpp/100packet.pcap"  # Replace with your .pcap file path
+    pcap_file = "100packet.pcap"  # Replace with your .pcap file path
     forward_pcap_to_udp(pcap_file, target_ip="127.0.0.1", target_port=9000, interval=0.1)
