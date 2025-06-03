@@ -1,15 +1,27 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -O2 -pthread
 
-INCLUDES = -I./include
+# Detect OS (Darwin = macOS)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    YAML_INCLUDE = -I/opt/homebrew/include
+    YAML_LIB     = -L/opt/homebrew/lib
+else
+    YAML_INCLUDE = -I/usr/local/include
+    YAML_LIB     = -L/usr/local/lib
+endif
+INCLUDES = -I./include $(YAML_INCLUDE)
+LIBS     = $(YAML_LIB) -lyaml-cpp -lrdkafka
+
 TARGET = cboe_feed_handler
 
 SRCDIR = ./src
 PARSERDIR = $(SRCDIR)/parser
 OBJDIR = ./obj
 BINDIR = ./bin
+# Libraries
 
-SRC_SOURCES = main.cpp UdpReceiver.cpp  Dispatcher.cpp KafkaProducer.cpp UdpMessageHandler.cpp MessageFactory.cpp
+SRC_SOURCES = main.cpp UdpReceiver.cpp KafkaProducer.cpp SymbolIdentifier.cpp MessageFactory.cpp
 #PARSER_SOURCES = AddOrder.cpp AuctionSummary.cpp AuctionUpdate.cpp CalculatedValue.cpp DeleteOrder.cpp \
 #                 EndOfSession.cpp GapLogin.cpp GapRequest.cpp GapResponse.cpp LoginResponse.cpp \
 #                 ModifyOrder.cpp OrderExecuted.cpp OrderExecutedAtPrice.cpp ReduceSize.cpp \
@@ -27,7 +39,7 @@ all: $(BINDIR)/$(TARGET)
 #	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^
 
 $(BINDIR)/$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^ $(LIBS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
@@ -37,6 +49,12 @@ $(OBJDIR)/%.o: $(PARSERDIR)/%.cpp | $(OBJDIR)
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+$(BINDIR):
+	mkdir -p $(BINDIR)
 
 $(OBJDIR)/main.o: $(SRCDIR)/main.cpp ./include/UdpReceiver.hpp ./include/pitch/seq_unit_header.h ./include/pitch/message_factory.h ./include/pitch/message.h ./include/DisruptorRouter.hpp
 $(OBJDIR)/UdpReceiver.o: $(SRCDIR)/UdpReceiver.cpp ./include/UdpReceiver.hpp

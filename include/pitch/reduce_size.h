@@ -12,7 +12,8 @@ namespace CboePitch {
         static constexpr uint8_t MESSAGE_TYPE = 0x39;
         static constexpr size_t MESSAGE_SIZE = 22;
 
-        static ReduceSize parse(const uint8_t *data, size_t size, size_t offset = 0) {
+        static ReduceSize parse(const uint8_t *data, size_t size, equix_md::SymbolIdentifier &symbol_map,
+                                size_t offset = 0) {
             if (size < MESSAGE_SIZE) {
                 throw std::invalid_argument("ReduceSize message too short");
             }
@@ -21,7 +22,10 @@ namespace CboePitch {
             uint64_t orderId = Message::readUint64LE(data + offset + 10);
             uint32_t cancelledQuantity = Message::readUint32LE(data + offset + 18);
 
-            return ReduceSize(timestamp, orderId, cancelledQuantity);
+            ReduceSize reduce_size(timestamp, orderId, cancelledQuantity);
+            reduce_size.setSymbolMap(&symbol_map);
+            reduce_size.payload.assign(data + offset, data + offset + MESSAGE_SIZE);
+            return reduce_size;
         }
 
         std::string toString() const override {

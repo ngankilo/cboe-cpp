@@ -1,0 +1,8 @@
+listeners:
+  http:
+    port: 8888
+
+kafka:
+  clusters:
+    - bootstrapServers: kafka:9092
+      name: local

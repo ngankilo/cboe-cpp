@@ -12,7 +12,8 @@ namespace CboePitch {
         static constexpr uint8_t MESSAGE_TYPE = 0x38;
         static constexpr size_t MESSAGE_SIZE = 43;
 
-        static OrderExecuted parse(const uint8_t* data, size_t size, size_t offset = 0) {
+        static OrderExecuted parse(const uint8_t *data, size_t size, equix_md::SymbolIdentifier &symbol_map,
+                                   size_t offset = 0) {
             if (size < MESSAGE_SIZE) {
                 throw std::invalid_argument("OrderExecuted message too short");
             }
@@ -24,21 +25,24 @@ namespace CboePitch {
             uint64_t contraOrderId = Message::readUint64LE(data + offset + 30);
 
             // Contra PID is 4 bytes ASCII, right padded with spaces
-            std::string contraPID(reinterpret_cast<const char*>(data + offset + 38), 4);
+            std::string contraPID(reinterpret_cast<const char *>(data + offset + 38), 4);
             // Trim trailing spaces
             contraPID.erase(contraPID.find_last_not_of(' ') + 1);
 
-            return OrderExecuted(timestamp, orderId, executedQuantity, executionId, contraOrderId, contraPID);
+            OrderExecuted order_executed(timestamp, orderId, executedQuantity, executionId, contraOrderId, contraPID);
+            order_executed.setSymbolMap(&symbol_map);
+            order_executed.payload.assign(data + offset, data + offset + MESSAGE_SIZE);
+            return order_executed;
         }
 
         std::string toString() const override {
             std::ostringstream oss;
             oss << "OrderExecuted{timestamp=" << timestamp
-                << ", orderId=" << orderId
-                << ", executedQuantity=" << executedQuantity
-                << ", executionId=" << executionId
-                << ", contraOrderId=" << contraOrderId
-                << ", contraPID='" << contraPID << "'}";
+                    << ", orderId=" << orderId
+                    << ", executedQuantity=" << executedQuantity
+                    << ", executionId=" << executionId
+                    << ", contraOrderId=" << contraOrderId
+                    << ", contraPID='" << contraPID << "'}";
             return oss.str();
         }
 
@@ -64,7 +68,8 @@ namespace CboePitch {
         OrderExecuted(uint64_t ts, uint64_t ordId, uint32_t qty, uint64_t execId,
                       uint64_t contraOrdId, std::string pid)
             : timestamp(ts), orderId(ordId), executedQuantity(qty), executionId(execId),
-              contraOrderId(contraOrdId), contraPID(std::move(pid)) {}
+              contraOrderId(contraOrdId), contraPID(std::move(pid)) {
+        }
     };
 } // namespace CboePitch
 

@@ -1,37 +1,62 @@
-#ifndef _UDP_RECEIVER_H_
-#define _UDP_RECEIVER_H_
+/**
+ * @file    UdpReceiver.hpp
+ * @brief   UDP datagram receiver class definition.
+ *
+ * Developer: Hoang Nguyen & Tan A. Pham
+ * Copyright: Equix Technologies Pty Ltd (contact@equix.com.au)
+ * Filename: UdpReceiver.hpp
+ * Created: 28/May/2025
+ *
+ * Description:
+ *   UdpReceiver provides asynchronous UDP packet reception. For every
+ *   datagram received, it invokes a user-provided callback. The receive
+ *   thread can optionally have its CPU affinity or real-time priority set.
+ */
 
+#ifndef UDP_RECEIVER_HPP_
+#define UDP_RECEIVER_HPP_
 #pragma once
-#include <functional>
-#include <atomic>
-#include <thread>
-#include <vector>
+
 #include <string>
+#include <thread>
+#include <atomic>
+#include <functional>
+#include <vector>
 #include <cstdint>
 
 /**
- * UdpReceiver: Receives UDP datagrams and calls a callback for each.
- * Optionally sets CPU affinity and real-time priority on the receive thread.
+ * @file    UdpReceiver.hpp
+ * @brief   Asynchronous UDP receiver class with thread affinity and real-time support.
  */
+
 class UdpReceiver {
 public:
-    using UdpCallback = std::function<void(const std::vector<char>&)>;
+    struct Config {
+        std::string bind_ip = "0.0.0.0";
+        uint16_t bind_port = 9000;
+        int cpu_affinity_core = -1; ///< -1 means no affinity
+        int thread_realtime_priority = 0; ///< 0 = normal priority
+    };
 
-    UdpReceiver(const std::string& ip, uint16_t port);
+    using PacketCallback = std::function<void(const std::vector<char> &)>;
+
+    explicit UdpReceiver(const Config &config);
+
     ~UdpReceiver();
 
-    // core_affinity: CPU core to pin (~thread affinity), -1 for no pin
-    // rt_priority: SCHED_FIFO priority (1-99), 0 for default
-    void start(UdpCallback cb, int core_affinity = -1, int rt_priority = 0);
+    void start(PacketCallback callback);
+
     void stop();
 
 private:
-    int sockfd;
-    std::atomic<bool> running;
-    std::thread recv_thread;
-    // Store for affinity/priority (not strictly necessary)
-    int affinity_core = -1;
-    int priority = 0;
+    void setup_thread_affinity();
+
+    void setup_realtime_priority();
+
+    int socket_fd_{-1};
+    std::atomic<bool> running_{false};
+    std::thread receiver_thread_;
+    Config config_;
 };
 
-#endif
+#endif // UDP_RECEIVER_HPP_

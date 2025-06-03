@@ -22,6 +22,7 @@
 #include <vector>
 #include <unordered_map>
 #include <shared_mutex>
+#include <mutex>
 
 /**
  * @class KafkaProducer
@@ -68,14 +69,29 @@ public:
      */
     const std::vector<std::string>& topic_list() const { return topics_; }
 
+    /**
+     * @brief Returns the topic handle for the given topic, creating it if not already in cache.
+     *
+     * @param topic_name Name of the topic.
+     * @return Pointer to rd_kafka_topic_t* handle (newly created or cached).
+     * @note Thread-safe.
+     */
+    rd_kafka_topic_t* get_or_create_topic(const std::string& topic_name);
+
     // Prevent copy/move
-    KafkaProducer(const KafkaProducer&) = delete;
-    KafkaProducer& operator=(const KafkaProducer&) = delete;
+    KafkaProducer(const KafkaProducer&) = delete;               ///< Deleted copy constructor
+    KafkaProducer& operator=(const KafkaProducer&) = delete;    ///< Deleted copy assignment
 
 private:
     KafkaProducer();
     ~KafkaProducer();
 
+    /**
+     * @brief Parses YAML config and sets Kafka producer configuration.
+     *
+     * @param config_path Path to the YAML config file.
+     * @throws std::runtime_error on configuration errors.
+     */
     void parse_config(const std::string& config_path);
 
     // Config loaded from YAML or other source

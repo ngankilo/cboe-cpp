@@ -12,7 +12,8 @@ namespace CboePitch {
         static constexpr uint8_t MESSAGE_TYPE = 0x58;
         static constexpr size_t MESSAGE_SIZE = 52;
 
-        static OrderExecutedAtPrice parse(const uint8_t *data, size_t size, size_t offset = 0) {
+        static OrderExecutedAtPrice parse(const uint8_t *data, size_t size, equix_md::SymbolIdentifier &symbol_map,
+                                          size_t offset = 0) {
             if (size < MESSAGE_SIZE) {
                 throw std::invalid_argument("OrderExecutedAtPrice message too short");
             }
@@ -33,8 +34,11 @@ namespace CboePitch {
 
             // Reserved byte at offset + 51 ignored
 
-            return OrderExecutedAtPrice(timestamp, orderId, executedQuantity, price,
-                                        executionId, contraOrderId, contraPid, executionType);
+            OrderExecutedAtPrice order_executed_at_price(timestamp, orderId, executedQuantity, price,
+                                                         executionId, contraOrderId, contraPid, executionType);
+            order_executed_at_price.setSymbolMap(&symbol_map);
+            order_executed_at_price.payload.assign(data + offset, data + offset + MESSAGE_SIZE);
+            return order_executed_at_price;
         }
 
         std::string toString() const override {

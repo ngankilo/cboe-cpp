@@ -22,7 +22,9 @@ namespace CboePitch {
             double price = decodePrice(data + offset + 17, 7);
             uint32_t shares = readUint32LE(data + offset + 25);
 
-            return AuctionSummary(timestamp, symbol, auctionType, price, shares);
+            AuctionSummary auction_summary(timestamp, symbol, auctionType, price, shares);
+            auction_summary.payload.assign(data + offset, data + offset + MESSAGE_SIZE);
+            return auction_summary;
         }
 
         std::string toString() const override {

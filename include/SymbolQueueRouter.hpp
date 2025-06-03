@@ -22,9 +22,10 @@
 #include <mutex>
 #include <vector>
 #include <string>
+#include <iostream> // DEBUG: for std::cout
 #include "tsl/robin_map.h"
 #include "concurrent_queue/concurrentqueue.h"
-#include "third_party/pitch/message_factory.h"
+#include "pitch/message_factory.h"
 
 /**
  * @class SymbolQueueRouter
@@ -38,7 +39,7 @@ class SymbolQueueRouter {
 public:
     using Message      = CboePitch::Message;
     using SymbolId     = std::string;
-    using MessagePtr   = std::unique_ptr<Message>;
+    using MessagePtr   = std::shared_ptr<Message>;
     using Queue        = moodycamel::ConcurrentQueue<MessagePtr>;
 
     /**
@@ -61,8 +62,18 @@ public:
      * @return true if the message was enqueued, false otherwise.
      */
     bool push(const SymbolId& symbol, MessagePtr msg) {
+
+        // Capture queue count before
+        size_t before_count = queue_count();
         auto queue_ptr = get_or_create_queue(symbol);
-        return queue_ptr->try_enqueue(std::move(msg));
+        bool enqueued = queue_ptr->try_enqueue(std::move(msg));
+        // DEBUG
+        size_t after_count = queue_count();
+        if (after_count > before_count) {
+            // std::cout << "[SymbolQueueRouter::push] New symbol added: '" << symbol << "'. Now "
+                      // << after_count << " queues.\n";
+        }
+        return enqueued;
     }
 
     /**
@@ -73,7 +84,11 @@ public:
     std::shared_ptr<Queue> find_queue(const SymbolId& symbol) const {
         std::lock_guard<std::mutex> lock(router_mutex_);
         auto it = queues_.find(symbol);
-        return (it != queues_.end()) ? it->second : nullptr;
+        if (it != queues_.end()) {
+            return it->second;
+        }
+        std::cerr << "[SymbolQueueRouter::find_queue] NO queue for symbol=" << symbol << std::endl;
+        return nullptr;
     }
 
     /**
@@ -112,8 +127,9 @@ private:
         {
             std::lock_guard<std::mutex> lock(router_mutex_);
             auto it = queues_.find(symbol);
-            if (it != queues_.end())
+            if (it != queues_.end()) {
                 return it->second;
+            }
         }
         // Acquire lock again to safely insert new queue if it was not found
         std::lock_guard<std::mutex> lock(router_mutex_);
@@ -122,6 +138,8 @@ private:
             queue_ptr = std::make_shared<Queue>(queue_capacity_);
             symbol_insertion_order_.push_back(symbol); // preserve insertion order for get_symbol_list
             queue_vector_.push_back(queue_ptr);
+        } else {
+            // std::cout << "[SymbolQueueRouter::get_or_create_queue] Queue for symbol=" << symbol << " already created by another thread (race condition)" << std::endl;
         }
         return queue_ptr;
     }
