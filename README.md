@@ -4,6 +4,47 @@
 
 ## Kiến trúc
 
+```text
++----------------------------------------+
+|   UDP Receive Thread x2 (for 2 ports)  |
++----------------------------------------+
+            |
+            v
+ +--------------------------------------------+
+ |      Minimal Parser & Lookup Stage         |
+ |   (parse symbol, or order_id -> symbol)    |
+ |     (maintain robin map: order_id/symbol)  |
+ |  (symbol identifier to detect symbol       |
+ +--------------------------------------------+
+            |
+           [MoodyCamel ConcurrentQueue]
+            |
+            v
++---------------------+     +---------------------+
+| Concurrent Queue    | ... | Concurrent Queue    |    ... up to 300k symbols
+|   per symbol (A)    |     |   per symbol (X)    |    (pre-allocate)
++----------+----------+     +----------+----------+
+           |                           |
+           +---------------------------+
+           |                           |
+           v                           v
+      +----------------------------+   ... more
+      |   Worker (Disruptor) 0     |   workers
+      |   (many assigned symbols)  |
+      +----------------------------+
+                  |
+                  v
+       +--------------------------------------+
+       |  Full Message Parser, Business Logic |
+       +--------------------------------------+
+                  |
+                  v
+       +-------------------+
+       |    Kafka Push     |
+       +-------------------+
+       
+
+```
 ### Thành phần chính:
 
 1. **UdpReceiver**: Nhận UDP packets với Real-time scheduling và CPU affinity
@@ -22,6 +63,12 @@
 - **Kafka batching**: Cấu hình tối ưu cho throughput
 - **Disruptor**: Thư viện LMAX để truyền dữ liệu hiệu năng cực cao
 
+### 3rd party:
+- **Robin map**: https://github.com/Tessil/robin-map
+- **Disruptor**: https://github.com/lewissbaker/disruptorplus
+- **Concurrent Queue**: https://github.com/cameron314/concurrentqueue
+- **Kafka**:  https://github.com/confluentinc/librdkafka
+
 ## Yêu cầu
 
 ### Dependencies:
@@ -35,9 +82,11 @@ sudo apt-get install -y \
     librdkafka-dev \
     nlohmann-json3-dev \
     pkg-config
-
+sudo apt install librdkafka-dev
+sudo apt-get install libyaml-cpp-dev
 # macOS
 brew install boost librdkafka nlohmann-json cmake
+brew install librdkafka
 ```
 
 ## Build

@@ -23,7 +23,9 @@ namespace CboePitch {
 
             uint64_t valueTimestamp = readUint64LE(data + offset + 25);
 
-            return CalculatedValue(timestamp, symbol, valueCategory, value, valueTimestamp);
+             CalculatedValue calculated_value(timestamp, symbol, valueCategory, value, valueTimestamp);
+            calculated_value.payload.assign(data + offset, data + offset + MESSAGE_SIZE);
+            return calculated_value;
         }
 
         std::string toString() const override {
@@ -41,7 +43,7 @@ namespace CboePitch {
         uint8_t getMessageType() const override { return MESSAGE_TYPE; }
 
         uint64_t getTimestamp() const { return timestamp; }
-        const std::string &getSymbol() const { return symbol; }
+        const std::string &getSymbol() const override { return symbol; }
         char getValueCategory() const { return valueCategory; }
         double getValue() const { return value; }
         uint64_t getValueTimestamp() const { return valueTimestamp; }

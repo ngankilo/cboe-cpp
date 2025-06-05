@@ -18,105 +18,125 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <cstring>
 #include <iostream>
-#include <pthread.h>
-#include <sched.h>
 #include <stdexcept>
+#include <errno.h>
+#include <pthread.h>
+
+#ifdef __linux__
+#include <sched.h>
+#endif
 
 /**
  * @brief Constructs and binds the UDP socket to the specified IP and port.
  */
-UdpReceiver::UdpReceiver(const Config& config)
-    : socket_fd_(-1), running_(false), config_(config)
-{
-    // Create UDP socket (IPv4)
+UdpReceiver::UdpReceiver(const Config &config)
+    : config_(config) {
     socket_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd_ < 0) {
-        perror("socket");
-        throw std::runtime_error("Failed to create socket");
+        throw std::runtime_error("Failed to create UDP socket: " + std::string(strerror(errno)));
     }
 
-    sockaddr_in local_addr{};
-    local_addr.sin_family = AF_INET;
-    local_addr.sin_port = htons(config_.bind_port);
-    local_addr.sin_addr.s_addr = inet_addr(config_.bind_ip.c_str());
+    // Optional: allow address reuse
+    int opt = 1;
+    setsockopt(socket_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    // Bind to the specified address and port
-    if (bind(socket_fd_, (struct sockaddr*)&local_addr, sizeof(local_addr)) < 0) {
-        perror("bind");
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(config_.bind_port);
+    addr.sin_addr.s_addr = inet_addr(config_.bind_ip.c_str());
+
+    if (bind(socket_fd_, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         close(socket_fd_);
-        throw std::runtime_error("Failed to bind");
+        throw std::runtime_error("Failed to bind UDP socket: " + std::string(strerror(errno)));
     }
+
+    // Set socket to non-blocking mode (for safe shutdown)
+    fcntl(socket_fd_, F_SETFL, fcntl(socket_fd_, F_GETFL, 0) | O_NONBLOCK);
 }
 
-/**
- * @brief Destructor: ensures resources are cleaned up.
- */
 UdpReceiver::~UdpReceiver() {
     stop();
-    if (socket_fd_ >= 0) {
-        close(socket_fd_);
-    }
 }
 
-/**
- * @brief Starts the UDP receiver thread, invoking callback on each datagram.
- * @param callback  Function to process each received UDP packet.
- */
 void UdpReceiver::start(PacketCallback callback) {
     if (running_) return;
 
     running_ = true;
+
     receiver_thread_ = std::thread([this, callback]() {
-        // Optionally set CPU affinity for this thread
-        if (config_.cpu_affinity_core >= 0) {
-            cpu_set_t cpuset;
-            CPU_ZERO(&cpuset);
-            CPU_SET(config_.cpu_affinity_core, &cpuset);
-            int rc = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-            if (rc != 0) {
-                std::cerr << "[UdpReceiver] Failed to set thread affinity: "
-                          << strerror(errno) << std::endl;
-            }
-        }
+        setup_thread_affinity();
+        setup_realtime_priority();
 
-        // Optionally set real-time priority (if requested)
-        if (config_.thread_realtime_priority > 0) {
-            sched_param param{};
-            param.sched_priority = config_.thread_realtime_priority;
-            int rc = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
-            if (rc != 0) {
-                std::cerr << "[UdpReceiver] Failed to set real-time priority: "
-                          << strerror(errno) << std::endl;
-            }
-        }
+        char buffer[2048];
 
-        // UDP receive loop
         while (running_) {
-            char buffer[2048];
             sockaddr_in src_addr{};
             socklen_t addrlen = sizeof(src_addr);
-            ssize_t len = recvfrom(
-                socket_fd_, buffer, sizeof(buffer), 0,
-                (struct sockaddr*)&src_addr, &addrlen);
+
+            ssize_t len = recvfrom(socket_fd_, buffer, sizeof(buffer), 0,
+                                   (struct sockaddr *) &src_addr, &addrlen);
 
             if (len > 0) {
-                callback(buffer, static_cast<size_t>(len));
-            } else if (len < 0 && running_) {
-                perror("[UdpReceiver] recvfrom");
+                callback(std::vector<char>(buffer, buffer + len));
+            } else if (len < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    continue;
+                }
+                if (running_) {
+                    std::cerr << "[UdpReceiver] recvfrom error: " << strerror(errno) << std::endl;
+                }
             }
         }
-        // std::cerr << "Receiver thread exit\n";
     });
 }
 
-/**
- * @brief Stops the UDP receiver thread and cleans up resources.
- */
 void UdpReceiver::stop() {
     running_ = false;
     if (receiver_thread_.joinable()) {
         receiver_thread_.join();
     }
+
+    if (socket_fd_ >= 0) {
+        close(socket_fd_);
+        socket_fd_ = -1;
+    }
+}
+
+void UdpReceiver::setup_thread_affinity() {
+#ifdef __linux__
+    if (config_.cpu_affinity_core < 0) return;
+
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(config_.cpu_affinity_core, &cpuset);
+    int rc = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (rc != 0) {
+        std::cerr << "[UdpReceiver] Failed to set CPU affinity: " << strerror(errno) << std::endl;
+    }
+#else
+    if (config_.cpu_affinity_core >= 0) {
+        std::cerr << "[UdpReceiver] CPU affinity not supported on this platform.\n";
+    }
+#endif
+}
+
+void UdpReceiver::setup_realtime_priority() {
+#ifdef __linux__
+    if (config_.thread_realtime_priority <= 0) return;
+
+    sched_param param{};
+    param.sched_priority = config_.thread_realtime_priority;
+    int rc = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
+    if (rc != 0) {
+        std::cerr << "[UdpReceiver] Failed to set real-time priority: " << strerror(errno) << std::endl;
+    }
+#else
+    if (config_.thread_realtime_priority > 0) {
+        std::cerr << "[UdpReceiver] Real-time priority not supported on this platform.\n";
+    }
+#endif
 }

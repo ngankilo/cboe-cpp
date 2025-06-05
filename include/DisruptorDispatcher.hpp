@@ -14,13 +14,14 @@
  */
 
 #pragma once
-
 #ifndef DISRUPTOR_DISPATCHER_HPP_
 #define DISRUPTOR_DISPATCHER_HPP_
 
 #include <vector>
 #include <thread>
 #include <atomic>
+#include <functional>
+#include <iostream>
 #include "DisruptorRouter.hpp"
 #include "concurrent_queue/concurrentqueue.h"
 
@@ -37,20 +38,25 @@ public:
 
     /**
      * @brief Constructs and starts a dispatcher thread.
-     * @param assigned_indices   List of indices in symbol_queues for this worker.
-     * @param symbol_queues      Reference to vector of per-symbol queues.
-     * @param router             Reference to the disruptor router.
+     * @param id                Dispatcher thread index (0 <= id < num_dispatchers)
+     * @param num_dispatchers   Total dispatcher threads
+     * @param symbol_queues     Reference to all symbol queues (could grow!)
+     * @param router            Reference to disruptor router
      */
     DisruptorDispatcher(
-        std::vector<size_t> assigned_indices,
-        std::vector<std::unique_ptr<SymbolQueue>>& symbol_queues,
+        size_t id,
+        size_t num_dispatchers,
+        std::vector<std::shared_ptr<SymbolQueue>>& symbol_queues,
         disruptor_pipeline::DisruptorRouter<Event>& router)
-        : assigned_indices_(std::move(assigned_indices)),
-          symbol_queues_(symbol_queues),
-          router_(router),
+        : id_(id), num_dispatchers_(num_dispatchers),
+          symbol_queues_(symbol_queues), router_(router),
           is_running_(true),
           dispatcher_thread_([this] { this->run(); })
-    {}
+    {
+        // std::cout << "[DispatcherSetup] Thread " << id
+        //           << " of " << num_dispatchers_
+        //           << " started.\n";
+    }
 
     /**
      * @brief Destructor. Signals dispatcher to stop and waits for thread exit.
@@ -65,27 +71,39 @@ private:
      * @brief Main dispatcher loop: consumes from symbol queues and routes to ring buffer.
      */
     void run() {
+        // std::cout << "[Dispatcher] Thread " << id_ << " starting (handles any queue idx where idx % "
+                  // << num_dispatchers_ << " == " << id_ << ")\n";
         while (is_running_) {
-            for (size_t symbol_idx : assigned_indices_) {
+            auto N = symbol_queues_.size(); // dynamically changes as new symbols arrive!
+            for (size_t idx = 0; idx < N; ++idx) {
+                if ((idx % num_dispatchers_) != id_) continue;
+                auto& qptr = symbol_queues_[idx];
+                if (!qptr) continue; // safety
                 Event event;
-                // Drain the queue for this symbol and publish to ring buffer
-                while (symbol_queues_[symbol_idx]->try_dequeue(event)) {
+                size_t drained = 0;
+                while (qptr->try_dequeue(event)) {
                     disruptorplus::sequence_t seq;
                     Event& slot = router_.claim_and_get_slot(seq);
                     slot = std::move(event);
                     router_.publish(seq);
+                    ++drained;
+                }
+                if (drained) {
+                    // std::cout << "[Dispatcher] Thread " << id_ << " dequeued " << drained
+                              // << " message(s) for queue #" << idx << std::endl;
                 }
             }
-            // Yield or sleep for fairness/tuning
             std::this_thread::yield();
         }
+        // std::cout << "[Dispatcher] Thread " << id_ << " exiting\n";
     }
 
-    std::vector<size_t> assigned_indices_;                  ///< Assigned indices for this worker
-    std::vector<std::unique_ptr<SymbolQueue>>& symbol_queues_; ///< Reference to vector of symbol queues
-    disruptor_pipeline::DisruptorRouter<Event>& router_;    ///< Reference to disruptor router
-    std::atomic<bool> is_running_;                          ///< Running flag for thread loop
-    std::thread dispatcher_thread_;                         ///< Background thread for dispatching
+    size_t id_;
+    size_t num_dispatchers_;
+    std::vector<std::shared_ptr<SymbolQueue>>& symbol_queues_;
+    disruptor_pipeline::DisruptorRouter<Event>& router_;
+    std::atomic<bool> is_running_;
+    std::thread dispatcher_thread_;
 };
 
 #endif // DISRUPTOR_DISPATCHER_HPP_

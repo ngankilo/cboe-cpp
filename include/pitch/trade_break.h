@@ -12,7 +12,8 @@ namespace CboePitch {
         static constexpr uint8_t MESSAGE_TYPE = 0x3E;
         static constexpr size_t MESSAGE_SIZE = 18;
 
-        static TradeBreak parse(const uint8_t *data, size_t size, size_t offset = 0) {
+        static TradeBreak parse(const uint8_t *data, size_t size, equix_md::SymbolIdentifier &symbol_map,
+                                size_t offset = 0) {
             if (size < offset + MESSAGE_SIZE) {
                 throw std::invalid_argument("Trade Break message too short");
             }
@@ -20,7 +21,10 @@ namespace CboePitch {
             uint64_t timestamp = Message::readUint64LE(data + offset + 2);
             uint64_t executionId = Message::readUint64LE(data + offset + 10);
 
-            return TradeBreak(timestamp, executionId);
+            TradeBreak trade(timestamp, executionId);
+            trade.payload.assign(data + offset, data + offset + MESSAGE_SIZE);
+            trade.setSymbolMap(&symbol_map);
+            return trade;
         }
 
         std::string toString() const override {

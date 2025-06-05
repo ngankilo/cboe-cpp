@@ -13,8 +13,8 @@ namespace CboePitch {
         static constexpr uint8_t MESSAGE_TYPE = 0x3D;
         static constexpr size_t MESSAGE_SIZE = 72;
 
-        static Trade parse(const uint8_t *data, size_t size, size_t offset = 0) {
-            if (size < offset + MESSAGE_SIZE) {
+        static Trade parse(const uint8_t *data, size_t size, equix_md::SymbolIdentifier& symbol_map, size_t offset = 0) {
+            if (size < MESSAGE_SIZE) {
                 throw std::invalid_argument("Trade message too short");
             }
 
@@ -42,9 +42,12 @@ namespace CboePitch {
             uint64_t tradeTxnTime = Message::readUint64LE(data + offset + 63);
             uint8_t flags = data[offset + 71];
 
-            return Trade(timestamp, symbol, quantity, price, executionId, orderId,
-                                contraOrderId, pid, contraPid, tradeType,
-                                tradeDesignation, tradeReportType, tradeTxnTime, flags);
+            Trade trade(timestamp, symbol, quantity, price, executionId, orderId,
+                        contraOrderId, pid, contraPid, tradeType,
+                        tradeDesignation, tradeReportType, tradeTxnTime, flags);
+            trade.setSymbolMap(&symbol_map);
+            trade.payload.assign(data + offset, data + offset + MESSAGE_SIZE);
+            return trade;
         }
 
         std::string toString() const override {
@@ -72,7 +75,7 @@ namespace CboePitch {
 
         // Accessors
         uint64_t getTimestamp() const { return timestamp; }
-        const std::string &getSymbol() const { return symbol; }
+        const std::string &getSymbol() const override { return symbol; }
         uint32_t getQuantity() const { return quantity; }
         double getPrice() const { return price; }
         uint64_t getExecutionId() const { return executionId; }
@@ -103,8 +106,8 @@ namespace CboePitch {
         uint8_t flags;
 
         Trade(uint64_t ts, const std::string &sym, uint32_t qty, double prc, uint64_t execId,
-                     uint64_t ordId, uint64_t contraId, const std::string &p, const std::string &contraP,
-                     char tt, char td, char trt, uint64_t txnTime, uint8_t flgs)
+              uint64_t ordId, uint64_t contraId, const std::string &p, const std::string &contraP,
+              char tt, char td, char trt, uint64_t txnTime, uint8_t flgs)
             : timestamp(ts), symbol(sym), quantity(qty), price(prc), executionId(execId),
               orderId(ordId), contraOrderId(contraId), pid(p), contraPid(contraP),
               tradeType(tt), tradeDesignation(td), tradeReportType(trt),

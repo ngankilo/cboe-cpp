@@ -22,7 +22,9 @@ namespace CboePitch {
             double price = decodePrice(data + offset + 17, 7);
             uint32_t shares = readUint32LE(data + offset + 25);
 
-            return AuctionSummary(timestamp, symbol, auctionType, price, shares);
+            AuctionSummary auction_summary(timestamp, symbol, auctionType, price, shares);
+            auction_summary.payload.assign(data + offset, data + offset + MESSAGE_SIZE);
+            return auction_summary;
         }
 
         std::string toString() const override {
@@ -40,7 +42,7 @@ namespace CboePitch {
         uint8_t getMessageType() const override { return MESSAGE_TYPE; }
 
         uint64_t getTimestamp() const { return timestamp; }
-        const std::string &getSymbol() const { return symbol; }
+        const std::string &getSymbol() const override { return symbol; }
         char getAuctionType() const { return auctionType; }
         double getClearingPrice() const { return clearingPrice; }
         uint32_t getExecutedQuantity() const { return executedQuantity; }

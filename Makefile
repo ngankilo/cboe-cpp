@@ -1,55 +1,67 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -O2 -pthread
 
-INCLUDES = -I./include
+# Detect OS (Darwin = macOS)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    YAML_INCLUDE = -I/opt/homebrew/include
+    YAML_LIB     = -L/opt/homebrew/lib
+else
+    YAML_INCLUDE = -I/usr/local/include
+    YAML_LIB     = -L/usr/local/lib
+endif
+INCLUDES = -I./include $(YAML_INCLUDE)
+LIBS     = $(YAML_LIB) -lyaml-cpp -lrdkafka
 
-SRC_DIR = ./src
-PARSER_DIR = $(SRC_DIR)/parser
-OBJ_DIR = ./obj
-BIN_DIR = ./bin
+TARGET = cboe_feed_handler
 
-# List all source files manually or using wildcard (can extend later)
-SRC_FILES = \
-	$(SRC_DIR)/main.cpp \
-	$(SRC_DIR)/UdpReceiver.cpp \
-	$(SRC_DIR)/MessageFactory.cpp \
-	$(SRC_DIR)/Dispatcher.cpp \
-	$(SRC_DIR)/KafkaProducer.cpp \
-	$(SRC_DIR)/UdpMessageHandler.cpp
+SRCDIR = ./src
+PARSERDIR = $(SRCDIR)/parser
+OBJDIR = ./obj
+BINDIR = ./bin
+# Libraries
 
-# Optional: add parser files (commented for now)
-#PARSER_FILES = $(wildcard $(PARSER_DIR)/*.cpp)
+SRC_SOURCES = main.cpp UdpReceiver.cpp KafkaProducer.cpp SymbolIdentifier.cpp MessageFactory.cpp
+#PARSER_SOURCES = AddOrder.cpp AuctionSummary.cpp AuctionUpdate.cpp CalculatedValue.cpp DeleteOrder.cpp \
+#                 EndOfSession.cpp GapLogin.cpp GapRequest.cpp GapResponse.cpp LoginResponse.cpp \
+#                 ModifyOrder.cpp OrderExecuted.cpp OrderExecutedAtPrice.cpp ReduceSize.cpp \
+#                 SequenceUnitHeader.cpp Trade.cpp TradeBreak.cpp TradingStatus.cpp UnitClear.cpp
 
-OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRC_FILES))
+SOURCES = $(SRC_SOURCES) $(PARSER_SOURCES)
+SRC_OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRC_SOURCES))
+PARSER_OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(PARSER_SOURCES))
+OBJS = $(SRC_OBJS) $(PARSER_OBJS)
 
-TARGET = $(BIN_DIR)/cboe_feed_handler
+all: $(BINDIR)/$(TARGET)
+#$(BINDIR)/udp_example
+#
+#$(BINDIR)/udp_example: $(filter-out $(OBJDIR)/main.o,$(OBJS)) $(OBJDIR)/main_udp_example.o
+#	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^
 
-# Default target
-all: $(BIN_DIR) $(OBJ_DIR) $(TARGET)
+$(BINDIR)/$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^ $(LIBS)
 
-# Link object files to binary
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^
-
-# Compile src/*.cpp → obj/*.o
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@mkdir -p $(dir $@)
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
 
-# Compile parser/*.cpp → obj/parser/*.o (if needed)
-$(OBJ_DIR)/%.o: $(PARSER_DIR)/%.cpp
-	@mkdir -p $(dir $@)
+$(OBJDIR)/%.o: $(PARSERDIR)/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
 
-# Create folders
-$(BIN_DIR):
-	mkdir -p $(BIN_DIR)
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-# Clean build artifacts
+$(BINDIR):
+	mkdir -p $(BINDIR)
+
+$(OBJDIR)/main.o: $(SRCDIR)/main.cpp ./include/UdpReceiver.hpp ./include/pitch/seq_unit_header.h ./include/pitch/message_factory.h ./include/pitch/message.h ./include/DisruptorRouter.hpp
+$(OBJDIR)/UdpReceiver.o: $(SRCDIR)/UdpReceiver.cpp ./include/UdpReceiver.hpp
+$(OBJDIR)/CboeParser.o: ./include/pitch/message_factory.h ./include/pitch/message_dispatcher.h ./include/pitch/seq_unit_header.h
+#$(OBJDIR)/SequenceUnitHeader.o: $(PARSERDIR)/SequenceUnitHeader.cpp ./include/pitch/seq_unit_header.h ./include/pitch/message_dispatcher.h
+
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	rm -f $(OBJDIR)/*.o $(BINDIR)/$(TARGET)
 
 .PHONY: all clean

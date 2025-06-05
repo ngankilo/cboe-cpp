@@ -1,0 +1,16 @@
+udp_receivers:
+  - ip: "0.0.0.0"
+    port: 30501
+    core_affinity: 4
+  - ip: "0.0.0.0"
+    port: 30502
+    core_affinity: 5
+kafka_cluster:
+  bootstrap_servers: "localhost:29092"
+  compression: "lz4"
+  acks: "1"
+  queue_buffering_max_messages: 1000000
+  batch_num_messages: 10000
+  linger_ms: 5
+  topics:
+    - DEFAULT

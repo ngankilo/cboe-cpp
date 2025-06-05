@@ -5,7 +5,9 @@
 #include <string>
 #include <stdexcept>
 #include <sstream>
+#include <vector>
 #include "message.h"
+#include "SymbolIdentifier.hpp"
 
 namespace CboePitch {
     class AddOrder : public Message {
@@ -13,63 +15,94 @@ namespace CboePitch {
         static constexpr uint8_t MESSAGE_TYPE = 0x37;
         static constexpr size_t MESSAGE_SIZE = 42;
 
-        static AddOrder parse(const uint8_t *data, size_t size, size_t offset = 0) {
+        static AddOrder parse(const uint8_t *data, size_t size, equix_md::SymbolIdentifier& symbol_map, size_t offset = 0) {
+            std::cout << "Size: " << size << " Offset: " << offset << std::endl;
             if (size < MESSAGE_SIZE) {
                 throw std::invalid_argument("AddOrder too short");
             }
 
+            // Parse fields from the binary message
             uint64_t timestamp = Message::readUint64LE(data + offset + 2);
             uint64_t orderId = Message::readUint64LE(data + offset + 10);
             char side = static_cast<char>(data[offset + 18]);
             uint32_t quantity = Message::readUint32LE(data + offset + 19);
-            std::string symbol(reinterpret_cast<const char *>(data + offset + 23), 6);
-            std::string participantId(reinterpret_cast<const char *>(data + offset + 37), 4);
-            // Reserved byte at offset + 41 is ignored
+            std::string symbol = Message::readAscii(data + offset + 23, 6);
+            std::string participantId = Message::readAscii(data + offset + 37, 4);
             const double price = Message::decodePrice(data + offset + 29);
 
-            return AddOrder(timestamp, orderId, side, quantity, symbol, price, participantId);
+            // Trim trailing spaces for symbol and participantId
+            symbol = Message::trimRight(symbol);
+            participantId = Message::trimRight(participantId);
+
+            // CRITICAL: Store symbol+price in SymbolIdentifier using the new method
+            // This is where we establish the mapping that other messages will use
+            if (!symbol_map.add_mapping(orderId, symbol, price)) {
+                std::cerr << "Warning: Order ID " << orderId << " already exists in SymbolIdentifier" << std::endl;
+            }
+
+            // Create AddOrder instance - note we still store symbol locally for immediate access
+            // This maintains backward compatibility while enabling the new data flow
+            AddOrder add_order(timestamp, orderId, side, quantity, symbol, price, participantId);
+            add_order.setSymbolMap(&symbol_map);
+            add_order.setPayload(data + offset, MESSAGE_SIZE);
+
+            return add_order;
         }
 
         std::string toString() const override {
             std::ostringstream oss;
             oss << "AddOrder{timestamp=" << timestamp
-                    << ", orderId=" << orderId
-                    << ", side=" << sideIndicator
-                    << ", quantity=" << quantity
-                    << ", symbol=" << symbol
-                    << ", price=" << price
-                    << ", participantId=" << participantId
-                    << "}";
+                << ", orderId=" << orderId
+                << ", side=" << sideIndicator
+                << ", quantity=" << quantity
+                << ", symbol=" << symbol
+                << ", price=" << price
+                << ", participantId=" << participantId
+                << "}";
             return oss.str();
         }
 
         size_t getMessageSize() const override { return MESSAGE_SIZE; }
         uint8_t getMessageType() const override { return MESSAGE_TYPE; }
+        uint64_t getOrderId() const override { return orderId; }
 
-        // Getters
+        // Override getSymbol to demonstrate the new capability
+        // For AddOrder, we can return either local copy or from SymbolIdentifier
+        const std::string &getSymbol() const override {
+            return symbol; // For AddOrder, we keep using local storage for performance
+        }
+
+        // Alternative method to get symbol from SymbolIdentifier
+        // This demonstrates the new data flow capability
+        std::string getSymbolFromMap() const {
+            if (symbol_map_) {
+                return symbol_map_->getSymbol(orderId);
+            }
+            return symbol; // Fallback to local copy
+        }
+
+        // Getters - these remain unchanged to maintain API compatibility
         uint64_t getTimestamp() const { return timestamp; }
-        uint64_t getOrderId() const { return orderId; }
         char getSide() const { return sideIndicator; }
         uint32_t getQuantity() const { return quantity; }
-        std::string getSymbol() const { return symbol; }
-        uint64_t getPrice() const { return price; }
+        double getPrice() const { return price; }
         std::string getParticipantId() const { return participantId; }
+        const std::vector<uint8_t> &getPayload() const { return payload; }
 
     private:
         uint64_t timestamp;
         uint64_t orderId;
         char sideIndicator;
         uint32_t quantity;
-        std::string symbol;
-        uint64_t price;
+        std::string symbol; // Keep local copy for AddOrder performance
+        double price;
         std::string participantId;
-        uint8_t data;
 
+        // Private constructor - forces use of parse() method
         AddOrder(uint64_t ts, uint64_t ordId, char side, uint32_t qty,
-                 const std::string &sym, uint64_t prc, const std::string &pid, uint8_t data = 0)
+                 const std::string &sym, double prc, const std::string &pid)
             : timestamp(ts), orderId(ordId), sideIndicator(side),
-              quantity(qty), symbol(sym), price(prc), participantId(pid) {
-        }
+              quantity(qty), symbol(sym), price(prc), participantId(pid) {}
     };
 } // namespace CboePitch
 

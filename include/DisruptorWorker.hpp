@@ -23,7 +23,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
-#include <iostream> // [DEBUG]
+#include <iostream>
 
 namespace disruptor_pipeline {
 
